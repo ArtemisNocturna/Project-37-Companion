@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.3";
+const COMPANION_VERSIE = "1.0.4";
 const FORMAAT = "project37-mobiel";
 const HOOGSTE_VERSIE = 1;
 
@@ -80,6 +80,20 @@ const ICOON = {
   circuit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M5 18c-2-2-1-6 1-8s3-5 6-5 4 2 6 2 3 2 2 4-4 2-4 4 3 3 1 5-5 0-7-1-3 1-5-1z"/></svg>',
   beker: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4c0 3 1.5 4.5 3.5 4.5M17 6h3c0 3-1.5 4.5-3.5 4.5M12 14v4M8 20h8"/></svg>',
 };
+
+
+// Ferrari F2004 van opzij, als neon-lijntekening (zelfde als de
+// randomizer-knop in de pc-app). Voor games zonder cover.
+const F2004_ROMP = "100,903 282,903 284,1000 330,990 420,962 480,945 600,905 700,872 760,855 765,822 842,820 848,850 855,935 900,955 990,998 1100,1003 1400,1010 1640,1028 1760,1060 1850,1100 1893,1132 1875,1150 1875,1206 1640,1206 1400,1208 450,1206 205,1210 145,1210 145,1100 100,1095";
+function f2004SVG() {
+  const romp = `<polygon points="${F2004_ROMP}"/><circle cx="945" cy="962" r="45"/>`;
+  const wielen = `<circle cx="328" cy="1108" r="124"/><circle cx="1520" cy="1110" r="125"/>`;
+  return `<svg class="f2004" viewBox="60 780 1873 470" aria-hidden="true">
+    <g class="gloed" fill="none">${romp}${wielen}</g>
+    <g class="lijn-dubbel">${romp}</g>
+    <g class="lijn" fill="none">${wielen}</g>
+  </svg>`;
+}
 
 // ------------------------------------------------------------
 // Opslag op het apparaat (IndexedDB)
@@ -348,11 +362,35 @@ function tekenWelkom() {
   </div></main>`;
 }
 
+// Per apparaat onthouden (los van de pc-app)
+function bewaard(key, standaard) {
+  try { const v = localStorage.getItem(key); return v === null ? standaard : JSON.parse(v); }
+  catch (e) { return standaard; }
+}
+function bewaar(key, waarde) {
+  try { localStorage.setItem(key, JSON.stringify(waarde)); } catch (e) { /* geen opslag: niet erg */ }
+}
+function onthoudGame(id) {
+  const lijst = bewaard("p37_recent", []).filter((x) => x !== String(id));
+  lijst.unshift(String(id));
+  bewaar("p37_recent", lijst.slice(0, 50));
+}
+function gesorteerdeGames(games) {
+  const lijst = [...games];
+  if (bewaard("p37_volgorde", "recent") === "az") {
+    return lijst.sort((a, b) => (a.naam || "").localeCompare(b.naam || "", "nl", { numeric: true }));
+  }
+  const recent = bewaard("p37_recent", []);
+  const plek = (g) => { const i = recent.indexOf(String(g.id)); return i < 0 ? 1e6 : i; };
+  return lijst.sort((a, b) => plek(a) - plek(b));   // nooit geopend: volgorde van de export
+}
+
 function tekenHome() {
   const d = staat.data;
-  const tegels = d.games.map((g) => `
+  const volgorde = bewaard("p37_volgorde", "recent");
+  const tegels = gesorteerdeGames(d.games).map((g) => `
     <button class="tegel" data-ga="${esc(pad("g", g.id, "autos"))}">
-      ${g.plaatje ? `<div style="width:100%;height:100%" data-img="${esc(g.plaatje)}"></div>` : `<div class="leeg">${esc((g.naam || "?").slice(0, 3).toUpperCase())}</div>`}
+      ${g.plaatje ? `<div style="width:100%;height:100%" data-img="${esc(g.plaatje)}"></div>` : `<div class="leeg">${f2004SVG()}</div>`}
       <div class="onder"><div class="naam">${esc(g.naam)}</div>
       <div class="tel">${meervoud(g.autos.length, "auto", "auto's")} · ${meervoud(g.circuits.length, "circuit", "circuits")} · ${meervoud(g.leaderboards.length, "leaderboard", "leaderboards")}</div></div>
     </button>`).join("");
@@ -362,6 +400,10 @@ function tekenHome() {
       <span>Export van ${esc(datumTekst(d.gemaakt))}${d.app_versie ? ` · Project 37 ${esc(d.app_versie)}` : ""}</span>
       <button class="knop" data-actie="laden">${ICOON.laden} Nieuwe export laden</button>
     </div>
+    ${d.games.length > 1 ? `<div class="schakel" role="group" aria-label="Volgorde">
+      <button class="${volgorde === "recent" ? "aan" : ""}" data-volgorde="recent">Laatst gebruikt</button>
+      <button class="${volgorde === "az" ? "aan" : ""}" data-volgorde="az">A-Z</button>
+    </div>` : ""}
     ${d.games.length ? `<div class="tegels">${tegels}</div>` : `<div class="leegtekst">Deze export bevat nog geen games.</div>`}
     ${installKnop()}
     <p class="voet">Companion ${COMPANION_VERSIE} · alleen bekijken · je gegevens blijven op dit apparaat<br><a class="link" href="#/controle">Installatie controleren</a></p>
@@ -468,6 +510,7 @@ function openFilters(g, tab) {
 // ---------- Game-scherm ----------
 function tekenGame(r) {
   const g = game(r.game);
+  onthoudGame(g.id);
   const tabs = [["autos", "Auto's", g.autos.length], ["circuits", "Circuits", g.circuits.length], ["lbs", "Leaderboards", g.leaderboards.length]];
   const f = filters(g, r.tab);
   const zoekHint = { autos: "Zoek op auto, klasse of jaar…", circuits: "Zoek op circuit, layout of land…", lbs: "Zoek op leaderboard of circuit…" }[r.tab];
@@ -504,6 +547,10 @@ function tekenGame(r) {
   zoek.addEventListener("input", () => { f.zoek = zoek.value; tekenLijstDeel(g, r.tab); });
   tekenLijstDeel(g, r.tab);
   activeerPlaatjes($(".detailkant"));
+  if (staat.schuif) {
+    $(".lijstkant").classList.add("schuif-" + staat.schuif);
+    staat.schuif = null;
+  }
   const key = `${g.id}|${r.tab}`;
   if (!r.id || breed()) window.scrollTo(0, staat.scroll[key] || 0);
 }
@@ -729,7 +776,7 @@ function lbDetail(g, lb) {
 // Klikken
 // ------------------------------------------------------------
 document.addEventListener("click", (e) => {
-  const el = e.target.closest("[data-ga],[data-actie],[data-tab],[data-terug],[data-filters]");
+  const el = e.target.closest("[data-ga],[data-actie],[data-tab],[data-terug],[data-filters],[data-volgorde]");
   if (!el || el.closest("#sheet-root")) return;
   const r = route();
   if (el.dataset.ga) {
@@ -739,6 +786,10 @@ document.addEventListener("click", (e) => {
     // lange rij om terug door te bladeren)
     const zelfdeLijst = r.scherm === "game" && breed() && r.id && el.closest(".lijst");
     ga(el.dataset.ga, !!zelfdeLijst);
+  } else if (el.dataset.volgorde) {
+    bewaar("p37_volgorde", el.dataset.volgorde);
+    staat.scroll.home = 0;
+    teken();
   } else if (el.dataset.actie === "installeer") {
     installeer();
   } else if (el.dataset.actie === "laden") {
@@ -766,6 +817,36 @@ window.addEventListener("resize", () => {
   if (breed() !== breedNu) { breedNu = breed(); teken(); }
 });
 
+
+// ------------------------------------------------------------
+// Swipen tussen de tabbladen (Auto's, Circuits, Leaderboards)
+// ------------------------------------------------------------
+const TABS = ["autos", "circuits", "lbs"];
+let veeg = null;
+document.addEventListener("touchstart", (e) => {
+  veeg = null;
+  const r = route();
+  if (r.scherm !== "game" || (r.id && !breed()) || e.touches.length !== 1) return;
+  if (e.target.closest(".kop, input, .sluier, .detailkant, #sheet-root")) return;
+  const t = e.touches[0];
+  const rand = 28;   // vlak bij de rand = het terug-gebaar van Android
+  if (t.clientX < rand || t.clientX > window.innerWidth - rand) return;
+  veeg = { x: t.clientX, y: t.clientY, tijd: Date.now() };
+}, { passive: true });
+document.addEventListener("touchend", (e) => {
+  if (!veeg) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - veeg.x, dy = t.clientY - veeg.y;
+  const snel = Date.now() - veeg.tijd < 700;
+  veeg = null;
+  if (!snel || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+  const r = route();
+  const i = TABS.indexOf(r.tab) + (dx < 0 ? 1 : -1);
+  if (i < 0 || i >= TABS.length) return;
+  staat.scroll[`${r.game}|${r.tab}`] = window.scrollY;
+  staat.schuif = dx < 0 ? "links" : "rechts";
+  ga(pad("g", r.game, TABS[i]), true);
+}, { passive: true });
 
 // ------------------------------------------------------------
 // Installeren + controle

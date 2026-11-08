@@ -102,10 +102,13 @@ main { padding: 14px 14px calc(24px + var(--bodem)); max-width: 1400px; margin: 
 }
 .tegel img { width: 100%; height: 100%; object-fit: cover; }
 .tegel .leeg {
-  width: 100%; height: 100%; display: grid; place-items: center; color: var(--accent-licht);
-  font-size: 34px; font-weight: 800; letter-spacing: .1em;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 30%, var(--paneel)), var(--paneel));
+  width: 100%; height: 100%; display: grid; place-items: center; padding: 8% 12% 22%;
+  background: radial-gradient(ellipse 70% 60% at 50% 45%, color-mix(in srgb, var(--accent) 22%, var(--paneel)), var(--paneel));
 }
+.f2004 { width: 100%; height: auto; overflow: visible; }
+.f2004 .gloed { stroke: var(--gloed); stroke-width: 26; opacity: .35; filter: blur(6px); stroke-linejoin: round; }
+.f2004 .lijn-dubbel { stroke: var(--tekst); stroke-width: 16; stroke-linejoin: round; paint-order: stroke; fill: color-mix(in srgb, var(--accent) 16%, var(--paneel)); }
+.f2004 .lijn { stroke: var(--tekst); stroke-width: 8; }
 .tegel .onder {
   position: absolute; inset: auto 0 0 0; padding: 30px 14px 10px;
   background: linear-gradient(transparent, rgba(0,0,0,.85));
@@ -285,3 +288,15 @@ main { padding: 14px 14px calc(24px + var(--bodem)); max-width: 1400px; margin: 
   .koppeling:hover { background: var(--vlak-hover); }
   .lb-rij:not(.eerste):hover { background: var(--vlak-hover); }
 }
+
+/* Volgorde van de games */
+.schakel { display: inline-flex; gap: 4px; padding: 4px; margin-bottom: 12px; border: 1px solid var(--rand); border-radius: 12px; background: var(--paneel); }
+.schakel button { min-height: 36px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: var(--tekst-zacht); font-weight: 700; font-size: 13.5px; }
+.schakel button.aan { background: var(--accent); color: #fff; box-shadow: 0 0 12px color-mix(in srgb, var(--gloed) 50%, transparent); }
+
+/* Swipen: lijst schuift erin */
+.schuif-links { animation: schuifLinks .22s ease-out; }
+.schuif-rechts { animation: schuifRechts .22s ease-out; }
+@keyframes schuifLinks { from { transform: translateX(40px); opacity: .3; } to { transform: none; opacity: 1; } }
+@keyframes schuifRechts { from { transform: translateX(-40px); opacity: .3; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .schuif-links, .schuif-rechts { animation: none; } }
