@@ -1,0 +1,34 @@
+PROJECT 37 COMPANION 1.0.3
+==========================
+
+Een web-app om je auto's, circuits en leaderboards van Project 37 te
+bekijken op je telefoon of tablet. Alleen bekijken, ook zonder internet.
+Je gegevens gaan nooit online: ze blijven op je telefoon. In deze map
+staat alleen de lege app, geen gegevens van jou.
+
+ONLINE ZETTEN (één keer, via GitHub Pages)
+------------------------------------------
+1. Maak een GitHub-account op https://github.com (los van je school-account).
+2. Rechtsboven: + > New repository. Naam: project37. Kies Public.
+   Vink "Add a README file" aan en klik Create repository.
+3. Klik "Add file" > "Upload files".
+4. Open op je pc de map project37_companion, selecteer alles erin
+   (Ctrl+A) en sleep dat naar het vak. De map icons moet mee.
+   Klik onderaan "Commit changes".
+5. Ga naar Settings > Pages. Bij "Branch" kies je main en / (root),
+   klik Save. Na een minuut of twee staat de app op
+   https://JOUWNAAM.github.io/project37/
+
+OP JE TELEFOON OF TABLET
+------------------------
+1. Open het adres in Chrome of Edge (op een tablet: "Desktopsite" uit).
+2. Menu > "Toevoegen aan telefoon" / "App installeren" > Installeren.
+3. Maak in Project 37 op de pc een export:
+   Instellingen > Gegevens > Exporteer voor mobiel.
+4. Tik in de companion op "Export laden" en kies die zip.
+
+NIEUWE VERSIE VAN DE COMPANION
+------------------------------
+In je repository: "Add file" > "Upload files", sleep de nieuwe
+bestanden erin (ze vervangen de oude) en klik "Commit changes".
+Je geladen export blijft gewoon staan.

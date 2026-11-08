@@ -1,0 +1,24 @@
+{
+  "id": "./",
+  "name": "Project 37",
+  "short_name": "Project 37",
+  "description": "Je auto's, circuits en leaderboards van Project 37 bekijken.",
+  "lang": "nl",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#030206",
+  "theme_color": "#030206",
+  "categories": ["sports", "utilities"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "icons/app-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/app-256.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "icons/app-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
