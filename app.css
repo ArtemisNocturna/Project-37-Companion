@@ -18,6 +18,7 @@
   --radius: 14px;
   --top: env(safe-area-inset-top, 0px);
   --bodem: env(safe-area-inset-bottom, 0px);
+  --z: 1;
   color-scheme: dark;
 }
 
@@ -84,6 +85,7 @@ img { display: block; }
 .knop svg { width: 20px; height: 20px; }
 
 main { padding: 14px 14px calc(24px + var(--bodem)); max-width: 1400px; margin: 0 auto; }
+@media (min-width: 900px) { main { max-width: none; padding-left: 24px; padding-right: 24px; } }
 
 /* ---------- Startscherm ---------- */
 .welkom { max-width: 520px; margin: 8vh auto 0; text-align: center; }
@@ -214,7 +216,11 @@ main { padding: 14px 14px calc(24px + var(--bodem)); max-width: 1400px; margin: 
 @media (min-width: 900px) {
   .werk { display: grid; grid-template-columns: minmax(340px, 42%) 1fr; gap: 14px; align-items: start; }
   .werk > .lijstkant { min-width: 0; }
-  .werk > .detailkant { position: sticky; top: 84px; max-height: calc(100vh - 100px); overflow-y: auto; }
+  .werk > .detailkant { position: sticky; top: 84px; max-height: calc(100vh / var(--z) - 100px); overflow-y: auto; }
+  .duim { width: 124px; height: 70px; }
+  .duim.circuit { width: 70px; }
+  .detailkant .groot { width: min(100%, calc((100vh / var(--z) - 340px) * 16 / 9)); min-width: 280px; margin: 0 auto; }
+  .detailkant .groot.circuit { width: min(100%, calc(100vh / var(--z) - 380px)); min-width: 240px; }
   .detail-leeg { display: grid; place-items: center; min-height: 300px; color: var(--tekst-zacht); text-align: center; padding: 20px; }
 }
 
@@ -301,3 +307,20 @@ main { padding: 14px 14px calc(24px + var(--bodem)); max-width: 1400px; margin: 
 @keyframes schuifRechts { from { transform: translateX(-40px); opacity: .3; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .schuif-links, .schuif-rechts { animation: none; } }
 .exportregel.onderaan { margin: 22px 0 0; padding-top: 16px; border-top: 1px solid var(--rand); }
+
+/* Plaatsvervangers (geen plaatje): neon-lijntekening */
+.duim.leeg, .groot.leeg {
+  background: radial-gradient(ellipse 70% 60% at 50% 50%, color-mix(in srgb, var(--accent) 20%, var(--paneel)), var(--paneel));
+}
+.duim.leeg { padding: 6px 8px; }
+.duim.circuit.leeg { padding: 7px; }
+.groot.leeg { padding: 10% 14%; }
+.groot.circuit.leeg { padding: 14%; background: radial-gradient(ellipse 60% 60% at 50% 50%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%); }
+.duim.leeg svg, .groot.leeg svg { width: 100%; height: auto; opacity: 1; overflow: visible; }
+.zandvoort .gloed { fill: none; stroke: var(--gloed); stroke-width: 60; opacity: .35; filter: blur(10px); stroke-linejoin: round; }
+.zandvoort .lijn { fill: none; stroke: var(--tekst); stroke-width: 22; stroke-linejoin: round; }
+.duim .zandvoort .lijn { stroke-width: 40; }
+.duim .zandvoort .gloed { display: none; }
+.duim .f2004 .gloed { display: none; }
+.duim .f2004 .lijn-dubbel { stroke-width: 34; }
+.duim .f2004 .lijn { stroke-width: 17; }

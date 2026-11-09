@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.5";
+const COMPANION_VERSIE = "1.0.6";
 const FORMAAT = "project37-mobiel";
 const HOOGSTE_VERSIE = 1;
 
@@ -95,6 +95,24 @@ function f2004SVG() {
     <g class="lijn-dubbel">${romp}</g>
     <g class="lijn" fill="none">${wielen}</g>
   </svg>`;
+}
+
+// Circuit Zandvoort als neon-lijntekening (zelfde als de circuit-randomizer
+// in de pc-app, met het rechte stuk onderaan)
+const ZANDVOORT = "502,965 164,966 40,964 24,959 11,948 3,933 0,918 4,901 11,887 23,876 39,870 75,870 182,870 230,864 277,850 318,830 337,827 352,832 375,844 391,861 436,907 452,917 470,914 484,908 496,897 502,882 502,866 493,846 419,758 390,715 372,675 360,638 352,602 349,574 341,531 329,494 313,470 292,442 257,413 210,381 184,357 165,333 147,300 136,272 95,154 90,125 92,96 100,72 111,54 125,36 144,21 165,10 188,3 213,0 242,4 336,27 377,33 490,37 506,55 520,80 530,106 537,137 539,172 537,212 527,254 513,283 501,292 486,295 462,290 444,277 423,255 397,213 368,174 337,141 313,126 291,125 270,132 253,148 243,174 244,192 269,282 305,367 353,453 405,522 439,563 480,608 523,649 564,680 577,692 579,704 569,720 554,739 550,757 558,776 574,791 591,796 607,794 635,778 858,636 874,629 892,627 909,628 920,631 940,644 952,661 986,739 992,756 998,781 1000,808 999,832 989,868 973,894 958,914 935,934 913,947 873,960 843,964 519,965 502,965";
+function zandvoortSVG() {
+  return `<svg class="zandvoort" viewBox="-60 -60 1120 1086" aria-hidden="true">
+    <polygon class="gloed" points="${ZANDVOORT}"/><polygon class="lijn" points="${ZANDVOORT}"/></svg>`;
+}
+
+// ------------------------------------------------------------
+// Schalen op grote schermen (tablets): alles groeit mee met de breedte
+// ------------------------------------------------------------
+function schaal() {
+  const w = window.innerWidth;
+  const z = w >= 900 ? Math.min(1.6, Math.max(1, w / 1380)) : 1;
+  document.body.style.zoom = z === 1 ? "" : String(z);
+  document.documentElement.style.setProperty("--z", String(z));
 }
 
 // ------------------------------------------------------------
@@ -593,9 +611,14 @@ function tekenLijstDeel(g, tab) {
   activeerPlaatjes(el);
 }
 
+// Zonder plaatje: neon-lijntekening (auto = F2004, circuit = Zandvoort)
+function plaatsvervanger(soort) {
+  return soort === "circuit" ? zandvoortSVG() : f2004SVG();
+}
+
 function duim(plaatje, soort) {
   const cls = soort === "circuit" ? "duim circuit" : "duim";
-  return plaatje ? `<div class="${cls}" data-img="${esc(plaatje)}"></div>` : `<div class="${cls}">${ICOON[soort]}</div>`;
+  return plaatje ? `<div class="${cls}" data-img="${esc(plaatje)}"></div>` : `<div class="${cls} leeg">${plaatsvervanger(soort)}</div>`;
 }
 
 function autoSub(a) {
@@ -671,7 +694,7 @@ function detailHTML(g, tab, id) {
 
 function grootPlaatje(plaatje, soort) {
   const cls = soort === "circuit" ? "groot circuit" : "groot";
-  return plaatje ? `<div class="${cls}" data-img="${esc(plaatje)}"></div>` : `<div class="${cls}">${ICOON[soort]}</div>`;
+  return plaatje ? `<div class="${cls}" data-img="${esc(plaatje)}"></div>` : `<div class="${cls} leeg">${plaatsvervanger(soort)}</div>`;
 }
 
 function autoDetail(g, a) {
@@ -827,6 +850,7 @@ window.addEventListener("hashchange", () => { $("#sheet-root").innerHTML = ""; t
 // Van telefoon- naar tabletweergave (draaien, scherm splitsen): opnieuw tekenen
 let breedNu = breed();
 window.addEventListener("resize", () => {
+  schaal();
   if (breed() !== breedNu) { breedNu = breed(); teken(); }
 });
 
@@ -975,6 +999,7 @@ async function tekenControle() {
 // Starten
 // ------------------------------------------------------------
 (async function start() {
+  schaal();
   try {
     const data = await Opslag.get("kv", "data");
     if (data && data.formaat === FORMAAT) {
