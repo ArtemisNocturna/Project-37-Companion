@@ -216,11 +216,12 @@ main { padding: 14px 14px calc(24px + var(--bodem)); max-width: 1400px; margin: 
 @media (min-width: 900px) {
   .werk { display: grid; grid-template-columns: minmax(340px, 42%) 1fr; gap: 14px; align-items: start; }
   .werk > .lijstkant { min-width: 0; }
-  .werk > .detailkant { position: sticky; top: 84px; max-height: calc(100vh / var(--z) - 100px); overflow-y: auto; }
+  .werk > .detailkant { position: sticky; top: 84px; max-height: calc(var(--hoogte, 100vh) - 100px); overflow-y: auto; }
   .duim { width: 124px; height: 70px; }
   .duim.circuit { width: 70px; }
-  .detailkant .groot { width: min(100%, calc((100vh / var(--z) - 340px) * 16 / 9)); min-width: 280px; margin: 0 auto; }
-  .detailkant .groot.circuit { width: min(100%, calc(100vh / var(--z) - 380px)); min-width: 240px; }
+  /* Plaatje zo groot dat titel, info en leaderboards er nog onder passen */
+  .detailkant .groot { width: min(100%, calc(clamp(180px, var(--hoogte, 800px) - 500px, 620px) * 16 / 9)); margin: 0 auto; }
+  .detailkant .groot.circuit { width: min(100%, clamp(180px, var(--hoogte, 800px) - 440px, 620px)); }
   .detail-leeg { display: grid; place-items: center; min-height: 300px; color: var(--tekst-zacht); text-align: center; padding: 20px; }
 }
 

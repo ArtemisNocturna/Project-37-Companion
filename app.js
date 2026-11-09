@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.6";
+const COMPANION_VERSIE = "1.0.7";
 const FORMAAT = "project37-mobiel";
 const HOOGSTE_VERSIE = 1;
 
@@ -113,6 +113,8 @@ function schaal() {
   const z = w >= 900 ? Math.min(1.6, Math.max(1, w / 1380)) : 1;
   document.body.style.zoom = z === 1 ? "" : String(z);
   document.documentElement.style.setProperty("--z", String(z));
+  // Beschikbare hoogte in "app-pixels" (na het vergroten)
+  document.documentElement.style.setProperty("--hoogte", `${Math.round(window.innerHeight / z)}px`);
 }
 
 // ------------------------------------------------------------
