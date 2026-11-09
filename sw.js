@@ -1,11 +1,12 @@
 // Project 37 companion: zorgt dat de app ook zonder internet opent.
 // Bij een nieuwe versie van de app: VERSIE ophogen.
-const VERSIE = "p37-companion-1.0.8";
+const VERSIE = "p37-companion-1.0.9";
 const BESTANDEN = [
   "./",
   "index.html",
   "app.css",
   "app.js",
+  "stats.js",
   "jszip.min.js",
   "manifest.webmanifest",
   "icons/icon-192.png",

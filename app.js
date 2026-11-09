@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.8";
+const COMPANION_VERSIE = "1.0.9";
 const FORMAAT = "project37-mobiel";
 const HOOGSTE_VERSIE = 1;
 
@@ -77,6 +77,7 @@ const ICOON = {
   terug: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
   filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5z"/></svg>',
   laden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>',
+  stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V12M10 20V6M15 20v-9M20 20V4"/></svg>',
   hart: '<svg class="hart" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1z"/></svg>',
   auto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2 15.5l2-.5 3-3.5h7l4 3.5 4 .8V17H2z"/><circle cx="6.5" cy="17" r="2"/><circle cx="17.5" cy="17" r="2"/></svg>',
   circuit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M5 18c-2-2-1-6 1-8s3-5 6-5 4 2 6 2 3 2 2 4-4 2-4 4 3 3 1 5-5 0-7-1-3 1-5-1z"/></svg>',
@@ -339,8 +340,9 @@ function toonBezig(t) {
 function route() {
   const delen = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
   if (delen[0] === "g" && delen[1]) {
-    const tab = ["autos", "circuits", "lbs"].includes(delen[2]) ? delen[2] : "autos";
-    return { scherm: "game", game: delen[1], tab, id: delen[3] || null };
+    const tab = ["autos", "circuits", "lbs", "stats"].includes(delen[2]) ? delen[2] : "autos";
+    const id = tab === "stats" ? null : delen[3] || null;
+    return { scherm: "game", game: delen[1], tab, id, stats: !!id && tab === "lbs" && delen[4] === "stats" };
   }
   if (delen[0] === "controle") return { scherm: "controle" };
   return { scherm: "home" };
@@ -363,7 +365,7 @@ function teken() {
   document.body.style.overflow = "";
   if (r.scherm === "controle") return tekenControle();
   if (!staat.data) return tekenWelkom();
-  if (r.scherm === "game" && game(r.game)) return tekenGame(r);
+  if (r.scherm === "game" && game(r.game)) return r.stats ? tekenLbStats(r) : tekenGame(r);
   return tekenHome();
 }
 
@@ -543,7 +545,7 @@ function openFilters(g, tab) {
 function tekenGame(r) {
   const g = game(r.game);
   onthoudGame(g.id);
-  const tabs = [["autos", "Auto's", g.autos.length], ["circuits", "Circuits", g.circuits.length], ["lbs", "Leaderboards", g.leaderboards.length]];
+  const tabs = [["autos", "Auto's", g.autos.length], ["circuits", "Circuits", g.circuits.length], ["lbs", "Leaderboards", g.leaderboards.length], ["stats", "Stats", null]];
   const f = filters(g, r.tab);
   const zoekHint = { autos: "Zoek op auto, klasse of jaar…", circuits: "Zoek op circuit, layout of land…", lbs: "Zoek op leaderboard of circuit…" }[r.tab];
 
@@ -560,7 +562,7 @@ function tekenGame(r) {
   app.innerHTML = `${kop(g.naam, "", `<button class="icoonknop" data-ga="#/" aria-label="Terug naar games">${ICOON.terug}</button>`)}
   <main>
     <nav class="tabs">${tabs.map(([k, t, n]) =>
-      `<button class="tab ${k === r.tab ? "actief" : ""}" data-tab="${k}">${t}<span class="n">${n}</span></button>`).join("")}</nav>
+      `<button class="tab ${k === r.tab ? "actief" : ""}" data-tab="${k}">${t}${n === null ? "" : `<span class="n">${n}</span>`}</button>`).join("")}</nav>
     <div class="werk">
       <div class="lijstkant">
         <div class="zoekbalk">
@@ -574,6 +576,13 @@ function tekenGame(r) {
         { autos: "Tik op een auto om het plaatje en de info te zien.", circuits: "Tik op een circuit om de plattegrond en de info te zien.", lbs: "Tik op een leaderboard om de tijden te zien." }[r.tab]}</div>`}</div>
     </div>
   </main>`;
+  if (r.tab === "stats") {
+    $(".werk").outerHTML = `<div class="werk-stats">${gameStatsHTML(g)}</div>`;
+    stTekenLijnen(app);
+    if (staat.schuif) { $(".werk-stats").classList.add("schuif-" + staat.schuif); staat.schuif = null; }
+    window.scrollTo(0, staat.scroll[`${g.id}|stats`] || 0);
+    return;
+  }
   if (!breed()) $(".detailkant").hidden = true;
 
   const zoek = $(".zoek");
@@ -779,6 +788,7 @@ function lbDetail(g, lb) {
     qualy ? `<span class="label accent">Qualy · ${esc(lb.rondes || 4)} rondes${grid ? ` · grid van ${grid}` : ""}</span>` : "",
     lb.gearchiveerd ? `<span class="label">Archief</span>` : "",
   ].filter(Boolean).join("");
+  const statsKnop = `<button class="knop neon klein stats-knop" data-ga="${esc(pad("g", g.id, "lbs", lb.id, "stats"))}">${ICOON.stats} Statistieken</button>`;
 
   const rij = (t) => {
     const pos = t.positie;
@@ -811,12 +821,24 @@ function lbDetail(g, lb) {
   return `<div class="detail">
     <h2 style="margin-top:0">${esc(lb.naam)}</h2>
     <div class="lb-info">${labels}</div>
+    ${statsKnop}
     ${v.totaal ? `<div class="sub" style="margin-top:12px">${v.gereden} van ${v.totaal} auto's gereden${v.gereden >= v.totaal ? " · compleet!" : ""}</div>${voortgangHTML(lb)}` : ""}
     ${lb.last_update ? `<div class="sub" style="margin-top:8px">Bijgewerkt ${esc(datumTekst(lb.last_update))}</div>` : ""}
     <div class="lb-tabel">
       ${geldig.length || ongeldig.length ? geldig.map(rij).join("") + ongeldig.map(rij).join("") : `<div class="leegtekst">Nog geen tijden op dit leaderboard.</div>`}
     </div>
   </div>`;
+}
+
+// ---------- Statistieken van één leaderboard (eigen scherm) ----------
+function tekenLbStats(r) {
+  const g = game(r.game);
+  const lb = g._lbOpId.get(String(r.id));
+  if (!lb) return ga(pad("g", g.id, "lbs"), true);
+  app.innerHTML = `<div class="detailscherm statsscherm">${kop(lb.naam, "Statistieken", `<button class="icoonknop" data-terug aria-label="Terug">${ICOON.terug}</button>`)}
+    <main>${lbStatsHTML(g, lb)}</main></div>`;
+  $(".statsscherm").scrollTop = 0;
+  stTekenLijnen(app);
 }
 
 // ------------------------------------------------------------
@@ -869,12 +891,12 @@ window.addEventListener("resize", () => {
 // ------------------------------------------------------------
 // Swipen tussen de tabbladen (Auto's, Circuits, Leaderboards)
 // ------------------------------------------------------------
-const TABS = ["autos", "circuits", "lbs"];
+const TABS = ["autos", "circuits", "lbs", "stats"];
 let veeg = null;
 document.addEventListener("touchstart", (e) => {
   veeg = null;
   const r = route();
-  if (r.scherm !== "game" || e.touches.length !== 1) return;
+  if (r.scherm !== "game" || r.stats || e.touches.length !== 1) return;
   if (e.target.closest(".kop, input, .sluier, #sheet-root")) return;
   // In het detail (los scherm op de telefoon, rechterkant op de tablet):
   // naar de vorige of volgende uit de lijst
