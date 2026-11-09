@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.7";
+const COMPANION_VERSIE = "1.0.8";
 const FORMAAT = "project37-mobiel";
 const HOOGSTE_VERSIE = 1;
 
@@ -586,6 +586,15 @@ function tekenGame(r) {
   }
   const key = `${g.id}|${r.tab}`;
   if (!r.id || breed()) window.scrollTo(0, staat.scroll[key] || 0);
+  if (staat.volgLijst) {
+    staat.volgLijst = false;
+    const rij = $(".rij.gekozen");
+    if (rij) {
+      const box = rij.getBoundingClientRect();
+      const kop = $(".kop").getBoundingClientRect().bottom;
+      if (box.top < kop + 20 || box.bottom > window.innerHeight - 40) rij.scrollIntoView({ block: "center" });
+    }
+  }
 }
 
 function tekenLijstDeel(g, tab) {
@@ -891,6 +900,8 @@ document.addEventListener("touchend", (e) => {
     const i = lijst.findIndex((x) => String(x.id) === String(r.id)) + (dx < 0 ? 1 : -1);
     if (i < 0 || i >= lijst.length) { melding(dx < 0 ? "Dit is de laatste" : "Dit is de eerste"); return; }
     staat.schuif = dx < 0 ? "links" : "rechts";
+    staat.scroll[`${r.game}|${r.tab}`] = window.scrollY;
+    staat.volgLijst = true;   // tablet: de lijst links meeschuiven
     ga(pad("g", r.game, r.tab, lijst[i].id), true);
     return;
   }
