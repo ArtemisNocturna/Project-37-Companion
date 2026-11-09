@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.4";
+const COMPANION_VERSIE = "1.0.5";
 const FORMAAT = "project37-mobiel";
 const HOOGSTE_VERSIE = 1;
 
@@ -25,6 +25,8 @@ const AUTO_INFO = [
   ["stuur", "Stuur"],
 ];
 const KM_PER_MIJL = 1.609344;
+// Volgorde van de leaderboards: "recent" = laatst bijgewerkt bovenaan, "az" = op naam
+const LB_VOLGORDE = "recent";
 
 // ------------------------------------------------------------
 // Kleine hulpjes
@@ -213,10 +215,17 @@ function bereidVoor(data) {
     for (const a of g.autos) if (!g._autoOpNaam.has(norm(a.naam))) g._autoOpNaam.set(norm(a.naam), a);
     g._circuitOpId = new Map(g.circuits.map((c) => [String(c.id), c]));
     g._lbOpId = new Map(g.leaderboards.map((lb) => [String(lb.id), lb]));
+    // Altijd netjes op volgorde, ook als nieuwe auto's achteraan zijn toegevoegd
+    const abc = (a, b) => a.localeCompare(b, "nl", { numeric: true, sensitivity: "base" });
+    g.autos.sort((a, b) => abc(tekst(a.naam), tekst(b.naam)));
+    g.circuits.sort((a, b) => abc(circuitTitel(a.circuit, a.layout), circuitTitel(b.circuit, b.layout)));
     for (const a of g.autos) a._zoek = norm([a.naam, a.klasse, a.categorie, a.jaartal].join(" "));
     for (const c of g.circuits) c._zoek = norm([c.circuit, c.layout, c.land, c.categorie].join(" "));
     for (const lb of g.leaderboards) {
       lb.tijden = lb.tijden || [];
+      // Laatst bijgewerkt: de datum van het leaderboard of de nieuwste tijd
+      lb._laatst = [lb.last_update, ...lb.tijden.map((t) => t.datum)]
+        .filter(Boolean).map((d) => Date.parse(d) || 0).reduce((a, b) => Math.max(a, b), 0);
       lb._zoek = norm([lb.naam, lb.circuit, lb.layout, (lb.categories || []).join(" ")].join(" "));
     }
   }
@@ -227,7 +236,7 @@ function bereidVoor(data) {
 // Export inlezen
 // ------------------------------------------------------------
 async function leesExport(bestand) {
-  const bezig = toonBezig("Export inlezen…");
+  const bezig = toonBezig("Gegevens inlezen…");
   try {
     const zip = await JSZip.loadAsync(bestand);
     const json = zip.file("project37_mobiel.json");
@@ -259,7 +268,7 @@ async function leesExport(bestand) {
     zetThema(data.thema);
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     bezig.weg();
-    melding(`Export van ${datumTekst(data.gemaakt)} geladen`);
+    melding(`Gegevens van ${datumTekst(data.gemaakt)} geladen`);
     if (location.hash && location.hash !== "#/") location.hash = "#/"; else teken();
   } catch (err) {
     bezig.weg();
@@ -354,9 +363,9 @@ function tekenWelkom() {
     <ol>
       <li>Open Project 37 op je pc.</li>
       <li>Ga naar <b>Instellingen › Gegevens › Exporteer voor mobiel</b> en zet de zip bijvoorbeeld in Google Drive.</li>
-      <li>Tik hieronder op <b>Export laden</b> en kies die zip.</li>
+      <li>Tik hieronder op <b>Gegevens laden</b> en kies die zip.</li>
     </ol>
-    <p style="margin-top:22px"><button class="knop neon" data-actie="laden">${ICOON.laden} Export laden</button></p>
+    <p style="margin-top:22px"><button class="knop neon" data-actie="laden">${ICOON.laden} Gegevens laden</button></p>
     ${installKnop()}
     <p class="voet">Je gegevens blijven op dit apparaat en gaan nergens naartoe.<br>Companion ${COMPANION_VERSIE} · <a class="link" href="#/controle">Installatie controleren</a></p>
   </div></main>`;
@@ -396,15 +405,15 @@ function tekenHome() {
     </button>`).join("");
   app.innerHTML = `${kop("Project 37", "")}
   <main>
-    <div class="exportregel">
-      <span>Export van ${esc(datumTekst(d.gemaakt))}${d.app_versie ? ` · Project 37 ${esc(d.app_versie)}` : ""}</span>
-      <button class="knop" data-actie="laden">${ICOON.laden} Nieuwe export laden</button>
-    </div>
     ${d.games.length > 1 ? `<div class="schakel" role="group" aria-label="Volgorde">
       <button class="${volgorde === "recent" ? "aan" : ""}" data-volgorde="recent">Laatst gebruikt</button>
       <button class="${volgorde === "az" ? "aan" : ""}" data-volgorde="az">A-Z</button>
     </div>` : ""}
-    ${d.games.length ? `<div class="tegels">${tegels}</div>` : `<div class="leegtekst">Deze export bevat nog geen games.</div>`}
+    ${d.games.length ? `<div class="tegels">${tegels}</div>` : `<div class="leegtekst">Er staan nog geen games in je gegevens.</div>`}
+    <div class="exportregel onderaan">
+      <span>Gegevens van ${esc(datumTekst(d.gemaakt))}${d.app_versie ? ` · Project 37 ${esc(d.app_versie)}` : ""}</span>
+      <button class="knop" data-actie="laden">${ICOON.laden} Gegevens bijwerken</button>
+    </div>
     ${installKnop()}
     <p class="voet">Companion ${COMPANION_VERSIE} · alleen bekijken · je gegevens blijven op dit apparaat<br><a class="link" href="#/controle">Installatie controleren</a></p>
   </main>`;
@@ -448,7 +457,10 @@ function gefilterd(g, tab) {
   }
   return g.leaderboards.filter((lb) =>
     pastZoek(lb._zoek) &&
-    (f.status === "alle" || (f.status === "archief") === !!lb.gearchiveerd));
+    (f.status === "alle" || (f.status === "archief") === !!lb.gearchiveerd))
+    .sort(LB_VOLGORDE === "az"
+      ? (a, b) => tekst(a.naam).localeCompare(tekst(b.naam), "nl", { numeric: true, sensitivity: "base" })
+      : (a, b) => (b._laatst || 0) - (a._laatst || 0));
 }
 
 function waarden(lijst, veld) {
@@ -521,6 +533,7 @@ function tekenGame(r) {
       <main><div class="paneel">${detailHTML(g, r.tab, r.id)}</div></main></div>`;
     activeerPlaatjes(app);
     $(".detailscherm").scrollTop = 0;
+    if (staat.schuif) { $(".detailscherm .detail").classList.add("schuif-" + staat.schuif); staat.schuif = null; }
     return;
   }
 
@@ -548,7 +561,7 @@ function tekenGame(r) {
   tekenLijstDeel(g, r.tab);
   activeerPlaatjes($(".detailkant"));
   if (staat.schuif) {
-    $(".lijstkant").classList.add("schuif-" + staat.schuif);
+    (r.id ? $(".detailkant .detail") || $(".lijstkant") : $(".lijstkant")).classList.add("schuif-" + staat.schuif);
     staat.schuif = null;
   }
   const key = `${g.id}|${r.tab}`;
@@ -646,14 +659,14 @@ function lbRij(g, lb, gekozen) {
 function detailHTML(g, tab, id) {
   if (tab === "autos") {
     const a = g._autoOpId.get(String(id));
-    return a ? autoDetail(g, a) : `<div class="leegtekst">Deze auto staat niet (meer) in de export.</div>`;
+    return a ? autoDetail(g, a) : `<div class="leegtekst">Deze auto staat niet (meer) in je gegevens.</div>`;
   }
   if (tab === "circuits") {
     const c = g._circuitOpId.get(String(id));
-    return c ? circuitDetail(g, c) : `<div class="leegtekst">Dit circuit staat niet (meer) in de export.</div>`;
+    return c ? circuitDetail(g, c) : `<div class="leegtekst">Dit circuit staat niet (meer) in je gegevens.</div>`;
   }
   const lb = g._lbOpId.get(String(id));
-  return lb ? lbDetail(g, lb) : `<div class="leegtekst">Dit leaderboard staat niet (meer) in de export.</div>`;
+  return lb ? lbDetail(g, lb) : `<div class="leegtekst">Dit leaderboard staat niet (meer) in je gegevens.</div>`;
 }
 
 function grootPlaatje(plaatje, soort) {
@@ -826,21 +839,35 @@ let veeg = null;
 document.addEventListener("touchstart", (e) => {
   veeg = null;
   const r = route();
-  if (r.scherm !== "game" || (r.id && !breed()) || e.touches.length !== 1) return;
-  if (e.target.closest(".kop, input, .sluier, .detailkant, #sheet-root")) return;
+  if (r.scherm !== "game" || e.touches.length !== 1) return;
+  if (e.target.closest(".kop, input, .sluier, #sheet-root")) return;
+  // In het detail (los scherm op de telefoon, rechterkant op de tablet):
+  // naar de vorige of volgende uit de lijst
+  const inDetail = r.id && (!breed() || e.target.closest(".detailkant"));
+  if (!inDetail && e.target.closest(".detailkant")) return;
   const t = e.touches[0];
   const rand = 28;   // vlak bij de rand = het terug-gebaar van Android
   if (t.clientX < rand || t.clientX > window.innerWidth - rand) return;
-  veeg = { x: t.clientX, y: t.clientY, tijd: Date.now() };
+  veeg = { x: t.clientX, y: t.clientY, tijd: Date.now(), detail: !!inDetail };
 }, { passive: true });
 document.addEventListener("touchend", (e) => {
   if (!veeg) return;
   const t = e.changedTouches[0];
   const dx = t.clientX - veeg.x, dy = t.clientY - veeg.y;
   const snel = Date.now() - veeg.tijd < 700;
+  const detail = veeg.detail;
+  if (!snel || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) { veeg = null; return; }
   veeg = null;
-  if (!snel || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
   const r = route();
+  if (detail) {
+    const g = game(r.game);
+    const lijst = gefilterd(g, r.tab);
+    const i = lijst.findIndex((x) => String(x.id) === String(r.id)) + (dx < 0 ? 1 : -1);
+    if (i < 0 || i >= lijst.length) { melding(dx < 0 ? "Dit is de laatste" : "Dit is de eerste"); return; }
+    staat.schuif = dx < 0 ? "links" : "rechts";
+    ga(pad("g", r.game, r.tab, lijst[i].id), true);
+    return;
+  }
   const i = TABS.indexOf(r.tab) + (dx < 0 ? 1 : -1);
   if (i < 0 || i >= TABS.length) return;
   staat.scroll[`${r.game}|${r.tab}`] = window.scrollY;
@@ -956,7 +983,7 @@ async function tekenControle() {
     }
   } catch (err) {
     console.error(err);
-    melding("De opgeslagen export kon niet gelezen worden. Laad hem opnieuw.", true);
+    melding("De opgeslagen gegevens konden niet gelezen worden. Laad ze opnieuw.", true);
   }
   teken();
   if ("serviceWorker" in navigator && location.protocol === "https:") {
