@@ -1,4 +1,4 @@
-PROJECT 37 COMPANION 1.0.9
+PROJECT 37 COMPANION 1.0.10
 ==========================
 
 Een web-app om je auto's, circuits en leaderboards van Project 37 te

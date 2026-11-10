@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.9";
+const COMPANION_VERSIE = "1.0.10";
 const FORMAAT = "project37-mobiel";
 const HOOGSTE_VERSIE = 1;
 
@@ -78,6 +78,7 @@ const ICOON = {
   filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5z"/></svg>',
   laden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>',
   stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V12M10 20V6M15 20v-9M20 20V4"/></svg>',
+  pijl: '<svg class="pijl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
   hart: '<svg class="hart" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1z"/></svg>',
   auto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2 15.5l2-.5 3-3.5h7l4 3.5 4 .8V17H2z"/><circle cx="6.5" cy="17" r="2"/><circle cx="17.5" cy="17" r="2"/></svg>',
   circuit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M5 18c-2-2-1-6 1-8s3-5 6-5 4 2 6 2 3 2 2 4-4 2-4 4 3 3 1 5-5 0-7-1-3 1-5-1z"/></svg>',
@@ -493,12 +494,21 @@ function waarden(lijst, veld) {
 function openFilters(g, tab) {
   const f = filters(g, tab);
   const items = tab === "autos" ? g.autos : g.circuits;
+  // Inklapbare groep (Klasse, Land, Categorie): dicht, met "n gekozen".
+  // Gekozen waarden bovenaan; bij veel waarden een zoekveldje.
+  const gekozenTekst = (set) => (set.size ? `${set.size} gekozen` : "alle");
   const chipGroep = (naam, veld, set) => {
     const w = waarden(items, veld);
     if (!w.length) return "";
-    return `<div class="groep"><div class="gnaam">${naam}</div><div class="chips">${
-      w.map((v) => `<button class="chip ${set.has(v) ? "aan" : ""}" data-set="${veld}" data-v="${esc(v)}">${esc(v)}</button>`).join("")
-    }</div></div>`;
+    const volgorde = [...w.filter((v) => set.has(v)), ...w.filter((v) => !set.has(v))];
+    return `<div class="groep inklap" data-groep="${veld}">
+      <button class="gkop" data-klap aria-expanded="false"><span class="gnaam">${naam}</span>
+        <span class="gtel ${set.size ? "aan" : ""}">${gekozenTekst(set)}</span>${ICOON.pijl}</button>
+      <div class="ginhoud" hidden>
+        ${w.length > 12 ? `<input class="gzoek" type="search" placeholder="Zoek ${naam.toLowerCase()}…" aria-label="Zoek ${naam.toLowerCase()}" enterkeyhint="search">` : ""}
+        <div class="chips">${volgorde.map((v) => `<button class="chip ${set.has(v) ? "aan" : ""}" data-set="${veld}" data-v="${esc(v)}">${esc(v)}</button>`).join("")}</div>
+        <div class="gleeg" hidden>Niets gevonden.</div>
+      </div></div>`;
   };
   const keuze = (naam, veld, opties) => `<div class="groep"><div class="gnaam">${naam}</div><div class="chips">${
     opties.map(([v, t]) => `<button class="chip ${f[veld] === v ? "aan" : ""}" data-keuze="${veld}" data-v="${v}">${t}</button>`).join("")
@@ -515,20 +525,40 @@ function openFilters(g, tab) {
   }
 
   const root = $("#sheet-root");
-  root.innerHTML = `<div class="sluier"><div class="venster" role="dialog" aria-label="Filters">
-    <h3>FILTERS</h3>${inhoud}
+  root.innerHTML = `<div class="sluier"><div class="venster filtervenster" role="dialog" aria-label="Filters">
+    <h3>FILTERS</h3><div class="vinhoud">${inhoud}</div>
     <div class="acties"><button class="knop" data-wis>Alles wissen</button><button class="knop neon" data-sluit>Klaar</button></div>
   </div></div>`;
   document.body.style.overflow = "hidden";
 
   const sluit = () => { root.innerHTML = ""; document.body.style.overflow = ""; tekenLijstDeel(g, tab); };
+  root.oninput = (e) => {
+    if (!e.target.classList.contains("gzoek")) return;
+    const groep = e.target.closest(".groep");
+    const woorden = norm(e.target.value).split(/\s+/).filter(Boolean);
+    let zichtbaar = 0;
+    groep.querySelectorAll(".chip").forEach((c) => {
+      const past = c.classList.contains("aan") || woorden.every((w) => norm(c.dataset.v).includes(w));
+      c.hidden = !past;
+      if (past) zichtbaar++;
+    });
+    $(".gleeg", groep).hidden = zichtbaar > 0;
+  };
   root.onclick = (e) => {
     const el = e.target.closest("button");
     if (!el) { if (e.target.classList.contains("sluier")) sluit(); return; }
-    if (el.dataset.set) {
+    if ("klap" in el.dataset) {
+      const groep = el.closest(".groep");
+      const open = el.getAttribute("aria-expanded") !== "true";
+      el.setAttribute("aria-expanded", String(open));
+      $(".ginhoud", groep).hidden = !open;
+    } else if (el.dataset.set) {
       const set = f[el.dataset.set]; const v = el.dataset.v;
       set.has(v) ? set.delete(v) : set.add(v);
       el.classList.toggle("aan");
+      const tel = $(".gtel", el.closest(".groep"));
+      tel.textContent = gekozenTekst(set);
+      tel.classList.toggle("aan", set.size > 0);
     } else if (el.dataset.keuze) {
       f[el.dataset.keuze] = el.dataset.v;
       el.parentElement.querySelectorAll(".chip").forEach((c) => c.classList.toggle("aan", c === el));
