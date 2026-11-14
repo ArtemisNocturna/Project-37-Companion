@@ -9,9 +9,10 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.10";
+const COMPANION_VERSIE = "1.0.11";
 const FORMAAT = "project37-mobiel";
-const HOOGSTE_VERSIE = 1;
+// Versie 2 (pc-app 1.1o): garage-systeem (game.garage_stap, auto.garage)
+const HOOGSTE_VERSIE = 2;
 
 // Velden in het infovenster van een auto (zelfde als de pc-app)
 const AUTO_INFO = [
@@ -37,6 +38,20 @@ const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) =>
 const norm = (v) => String(v ?? "").trim().toLocaleLowerCase("nl");
 const tekst = (v) => (v === null || v === undefined ? "" : String(v).trim());
 const bezit = (item) => item.in_bezit !== false;
+
+// Garage: "niet" (niet in bezit), "gekocht" (nog niet in je garage) of
+// "garage". Oude exports (versie 1) hebben alleen in_bezit: Ja = In garage.
+// Zonder garage-stap telt Gekocht als In garage (zoals op de pc).
+function garageStand(g, a) {
+  let s = ["niet", "gekocht", "garage"].includes(a.garage) ? a.garage : (bezit(a) ? "garage" : "niet");
+  if (s === "gekocht" && !g.garage_stap) s = "garage";
+  return s;
+}
+function garageTekst(g, s) {
+  if (s === "gekocht") return "Gekocht";
+  if (s === "garage") return g.garage_stap ? "In garage" : "In bezit";
+  return "Niet in bezit";
+}
 const meervoud = (n, een, veel) => `${n} ${n === 1 ? een : veel}`;
 
 function datumTekst(iso, metTijd = true) {
@@ -79,6 +94,10 @@ const ICOON = {
   laden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>',
   stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V12M10 20V6M15 20v-9M20 20V4"/></svg>',
   pijl: '<svg class="pijl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  // Garage-icoon (zelfde als de pc): leeg en gestippeld / deur dicht / auto erin
+  garage: (s, titel = "") => `<svg class="garage g-${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"${titel ? ` role="img" aria-label="${titel}"` : ' aria-hidden="true"'}>${titel ? `<title>${titel}</title>` : ""}<path d="M2.5 10.5L12 3.8l9.5 6.7M4.5 9.3v11.2M19.5 9.3v11.2M7.5 20.5V12h9v8.5"/>${
+    s === "gekocht" ? '<path d="M7.5 14.8h9M7.5 17.6h9M7.5 20.5h9"/>' : ""}${
+    s === "garage" ? '<path d="M9.6 16l.8-2.1h3.2l.8 2.1M9.6 19v1.4M14.4 19v1.4"/><rect x="8.8" y="16" width="6.4" height="3" rx=".9"/>' : ""}</svg>`,
   hart: '<svg class="hart" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1z"/></svg>',
   auto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2 15.5l2-.5 3-3.5h7l4 3.5 4 .8V17H2z"/><circle cx="6.5" cy="17" r="2"/><circle cx="17.5" cy="17" r="2"/></svg>',
   circuit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M5 18c-2-2-1-6 1-8s3-5 6-5 4 2 6 2 3 2 2 4-4 2-4 4 3 3 1 5-5 0-7-1-3 1-5-1z"/></svg>',
@@ -241,7 +260,11 @@ function bereidVoor(data) {
     const abc = (a, b) => a.localeCompare(b, "nl", { numeric: true, sensitivity: "base" });
     g.autos.sort((a, b) => abc(tekst(a.naam), tekst(b.naam)));
     g.circuits.sort((a, b) => abc(circuitTitel(a.circuit, a.layout), circuitTitel(b.circuit, b.layout)));
-    for (const a of g.autos) a._zoek = norm([a.naam, a.klasse, a.categorie, a.jaartal].join(" "));
+    for (const a of g.autos) {
+      a._zoek = norm([a.naam, a.klasse, a.categorie, a.jaartal].join(" "));
+      a._garage = garageStand(g, a);
+    }
+    for (const c of g.circuits) c._garage = bezit(c) ? "garage" : "niet";
     for (const c of g.circuits) c._zoek = norm([c.circuit, c.layout, c.land, c.categorie].join(" "));
     for (const lb of g.leaderboards) {
       lb.tijden = lb.tijden || [];
@@ -467,7 +490,7 @@ function gefilterd(g, tab) {
       pastZoek(a._zoek) &&
       (!f.klasse.size || f.klasse.has(tekst(a.klasse))) &&
       (!f.categorie.size || f.categorie.has(tekst(a.categorie))) &&
-      (f.bezit === "alle" || (f.bezit === "ja") === bezit(a)) &&
+      (f.bezit === "alle" || f.bezit === a._garage) &&
       (!f.fav || a.favoriet));
   }
   if (tab === "circuits") {
@@ -475,7 +498,7 @@ function gefilterd(g, tab) {
       pastZoek(c._zoek) &&
       (!f.land.size || f.land.has(tekst(c.land))) &&
       (!f.categorie.size || f.categorie.has(tekst(c.categorie))) &&
-      (f.bezit === "alle" || (f.bezit === "ja") === bezit(c)) &&
+      (f.bezit === "alle" || f.bezit === c._garage) &&
       (!f.fav || c.favoriet));
   }
   return g.leaderboards.filter((lb) =>
@@ -520,7 +543,11 @@ function openFilters(g, tab) {
   } else {
     inhoud = (tab === "autos" ? chipGroep("Klasse", "klasse", f.klasse) : chipGroep("Land", "land", f.land)) +
       chipGroep("Categorie", "categorie", f.categorie) +
-      keuze("Bezit", "bezit", [["alle", "Alle"], ["ja", "In bezit"], ["nee", "Niet in bezit"]]) +
+      (tab === "autos"
+        ? keuze("Garage", "bezit", g.garage_stap
+          ? [["alle", "Alle"], ["garage", "In garage"], ["gekocht", "Gekocht"], ["niet", "Niet in bezit"]]
+          : [["alle", "Alle"], ["garage", "In bezit"], ["niet", "Niet in bezit"]])
+        : keuze("Bezit", "bezit", [["alle", "Alle"], ["garage", "In bezit"], ["niet", "Niet in bezit"]])) +
       `<div class="groep"><div class="chips"><button class="chip ${f.fav ? "aan" : ""}" data-fav>${ICOON.hart} Alleen favorieten</button></div></div>`;
   }
 
@@ -682,7 +709,7 @@ function autoRij(g, a, gekozen) {
   return `<button class="rij ${bezit(a) ? "" : "niet-bezit"} ${String(a.id) === gekozen ? "gekozen" : ""}" data-ga="${esc(pad("g", g.id, "autos", a.id))}">
     ${duim(a.plaatje, "auto")}
     <div><div class="naam">${esc(a.naam)}</div><div class="sub">${esc(autoSub(a))}</div></div>
-    <div class="rechts">${a.mod ? '<span class="label">MOD</span>' : ""}${bezit(a) ? "" : '<span class="label">NIET IN BEZIT</span>'}${a.favoriet ? ICOON.hart : ""}</div>
+    <div class="rechts">${a.mod ? '<span class="label">MOD</span>' : ""}${ICOON.garage(a._garage, garageTekst(g, a._garage))}${a.favoriet ? ICOON.hart : ""}</div>
   </button>`;
 }
 
@@ -690,7 +717,7 @@ function circuitRij(g, c, gekozen) {
   return `<button class="rij ${bezit(c) ? "" : "niet-bezit"} ${String(c.id) === gekozen ? "gekozen" : ""}" data-ga="${esc(pad("g", g.id, "circuits", c.id))}">
     ${duim(c.plaatje, "circuit")}
     <div><div class="naam">${esc(circuitTitel(c.circuit, c.layout))}</div><div class="sub">${esc(circuitSub(c))}</div></div>
-    <div class="rechts">${c.mod ? '<span class="label">MOD</span>' : ""}${bezit(c) ? "" : '<span class="label">NIET IN BEZIT</span>'}${c.favoriet ? ICOON.hart : ""}</div>
+    <div class="rechts">${c.mod ? '<span class="label">MOD</span>' : ""}${ICOON.garage(c._garage, bezit(c) ? "In bezit" : "Niet in bezit")}${c.favoriet ? ICOON.hart : ""}</div>
   </button>`;
 }
 
@@ -717,7 +744,7 @@ function voortgangHTML(lb) {
 function lbRij(g, lb, gekozen) {
   const { titel } = lbCircuit(g, lb);
   const v = lb.voortgang || {};
-  const sub = [titel, (lb.categories || []).join(", "), periode(lb)].filter(Boolean).join(" · ");
+  const sub = [titel, stRegelTekst(lb), periode(lb)].filter(Boolean).join(" · ");
   return `<button class="rij ${String(lb.id) === gekozen ? "gekozen" : ""}" data-ga="${esc(pad("g", g.id, "lbs", lb.id))}" style="grid-template-columns:1fr auto">
     <div><div class="naam">${esc(lb.naam)} ${lb.soort === "qualy" ? '<span class="label accent">QUALY</span>' : ""} ${lb.gearchiveerd ? '<span class="label">ARCHIEF</span>' : ""}</div>
       <div class="sub">${esc(sub)}</div>${voortgangHTML(lb)}</div>
@@ -748,7 +775,7 @@ function grootPlaatje(plaatje, soort) {
 }
 
 function autoDetail(g, a) {
-  const sub = [a.klasse, a.categorie, tekst(a.jaartal), bezit(a) ? "In bezit" : "Niet in bezit", a.mod ? "Mod" : ""].filter(Boolean).join("  ·  ");
+  const sub = [a.klasse, a.categorie, tekst(a.jaartal), garageTekst(g, a._garage), a.mod ? "Mod" : ""].filter(Boolean).join("  ·  ");
   const rijen = AUTO_INFO.filter(([k]) => tekst(a[k])).map(([k, t]) => `<dt>${t}</dt><dd>${esc(a[k])}</dd>`).join("");
   // Tijden van deze auto op leaderboards
   const naam = norm(a.naam);
@@ -812,7 +839,7 @@ function lbDetail(g, lb) {
 
   const labels = [
     titel ? `<button class="label link" data-ga="${circuit ? esc(pad("g", g.id, "circuits", circuit.id)) : ""}" ${circuit ? "" : "disabled"}>${esc(titel)}</button>` : "",
-    (lb.categories || []).length ? `<span class="label">${esc(lb.categories.join(", "))}</span>` : "",
+    stRegelTekst(lb) ? `<span class="label">${esc(stRegelTekst(lb))}</span>` : "",
     periode(lb) ? `<span class="label">${esc(periode(lb))}</span>` : "",
     lb.zonder_mods ? `<span class="label">Zonder mods</span>` : "",
     qualy ? `<span class="label accent">Qualy · ${esc(lb.rondes || 4)} rondes${grid ? ` · grid van ${grid}` : ""}</span>` : "",
