@@ -107,6 +107,13 @@ function stMagMee(a, lb) {
   return [...stCategorieen(a).keys()].some((c) => cats.has(c) && (!perCat.has(c) || perCat.get(c).has(klasse)));
 }
 
+// Max aantal deelnemers bereikt (is_full op de pc): dan geen nieuwe auto's
+function stVol(lb) {
+  const max = parseInt(lb.max_deelnemers, 10);
+  if (!(max > 0)) return false;
+  return new Set(lb.tijden.filter((t) => t.auto).map((t) => norm(t.auto))).size >= max;
+}
+
 // Korte tekst: 'GT, Prototype (LMDH GTP) + TSI Cup' (rule_text op de pc)
 function stRegelTekst(lb) {
   const perCat = new Map(Object.entries(lb.klassen_per_categorie || {}).filter(([, k]) => k && k.length).map(([c, k]) => [norm(c), k]));
@@ -120,6 +127,7 @@ function stRegelTekst(lb) {
 // (get_candidates op de pc). Met 'alleen garage': geen auto's die op
 // Gekocht staan.
 function stNogTeRijden(g, lb) {
+  if (stVol(lb)) return [];
   const gebruikt = new Set(lb.tijden.filter((t) => t.auto).map((t) => norm(t.auto)));
   const van = parseInt(lb.bouwjaar_van, 10), tot = parseInt(lb.bouwjaar_tot, 10);
   const metJaar = !isNaN(van) || !isNaN(tot);
@@ -728,6 +736,7 @@ function lbStatsHTML(g, lb) {
   const regel = stRegelTekst(lb);
   if (regel) delen.push(regel);
   if (lb.alleen_garage && g.garage_stap) delen.push("alleen uit je garage");
+  if (parseInt(lb.max_deelnemers, 10) > 0) delen.push(`max ${parseInt(lb.max_deelnemers, 10)} deelnemers${lbKlaar(lb) ? " · KLAAR" : ""}`);
   const periodeTekst = periode(lb);
   if (periodeTekst) delen.push(periodeTekst.replace("Bouwjaar", "bouwjaar").replace("–", "-"));
 
@@ -752,7 +761,9 @@ function lbStatsHTML(g, lb) {
 
   // Voortgang + snelste klassen
   const open = stNogTeRijden(g, lb);
-  zet(stKaart("Voortgang", stRing(s.total ? s.done / s.total : 0, `${s.done}/${s.total}`, "auto's gereden",
+  const metMax = parseInt(lb.max_deelnemers, 10) > 0;
+  zet(stKaart(metMax ? (lbKlaar(lb) ? "Voortgang · KLAAR" : "Voortgang (max deelnemers)") : "Voortgang",
+    stRing(s.total ? s.done / s.total : 0, `${s.done}/${s.total}`, metMax ? "plekken gevuld" : "auto's gereden",
     open.length ? () => stDetails("Nog te rijden", AUTO_LIJST, open,
       `${open.length} auto's in bezit die op dit leaderboard mogen en nog geen tijd hebben.`) : null)), 1, 2);
   const klassen = s.classes;

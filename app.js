@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.12";
+const COMPANION_VERSIE = "1.0.13";
 const FORMAAT = "project37-mobiel";
 // Versie 2 (pc-app 1.1o): garage-systeem (game.garage_stap, auto.garage)
 const HOOGSTE_VERSIE = 2;
@@ -94,10 +94,14 @@ const ICOON = {
   laden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>',
   stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V12M10 20V6M15 20v-9M20 20V4"/></svg>',
   pijl: '<svg class="pijl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
-  // Garage-icoon (zelfde als de pc): leeg en gestippeld / deur dicht / auto erin
-  garage: (s, titel = "") => `<svg class="garage g-${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"${titel ? ` role="img" aria-label="${titel}"` : ' aria-hidden="true"'}>${titel ? `<title>${titel}</title>` : ""}<path d="M2.5 10.5L12 3.8l9.5 6.7M4.5 9.3v11.2M19.5 9.3v11.2M7.5 20.5V12h9v8.5"/>${
-    s === "gekocht" ? '<path d="M7.5 14.8h9M7.5 17.6h9M7.5 20.5h9"/>' : ""}${
-    s === "garage" ? '<path d="M9.6 16l.8-2.1h3.2l.8 2.1M9.6 19v1.4M14.4 19v1.4"/><rect x="8.8" y="16" width="6.4" height="3" rx=".9"/>' : ""}</svg>`,
+  // Garage-icoon (zelfde als de pc): leeg en gestippeld / deur dicht /
+  // In garage = alleen dak en muren met een grote dichte auto erin
+  garage: (s, titel = "") => `<svg class="garage g-${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"${titel ? ` role="img" aria-label="${titel}"` : ' aria-hidden="true"'}>${titel ? `<title>${titel}</title>` : ""}${
+    s === "garage"
+      ? '<path stroke-width="1.8" d="M2.5 10.5L12 3.8l9.5 6.7M4.5 9.3v11.2M19.5 9.3v11.2"/>' +
+        '<path stroke="none" fill="currentColor" fill-rule="evenodd" d="M8.86 12.69L9.98 9.59L14.02 9.59L15.14 12.69L15.72 12.69L16.82 13.15L17.27 14.24L17.27 16.73L16.82 17.82L16.65 17.89L16.65 20.6L14.17 20.6L14.17 18.27L9.83 18.27L9.83 20.6L7.35 20.6L7.35 17.89L7.18 17.82L6.73 16.73L6.73 14.24L7.18 13.15L8.28 12.69L8.86 12.69M10.37 15.33L10.03 16.15L9.21 16.49L8.39 16.15L8.05 15.33L8.39 14.51L9.21 14.17L10.03 14.51L10.37 15.33M15.95 15.33L15.61 16.15L14.79 16.49L13.97 16.15L13.63 15.33L13.97 14.51L14.79 14.17L15.61 14.51L15.95 15.33"/>'
+      : '<path d="M2.5 10.5L12 3.8l9.5 6.7M4.5 9.3v11.2M19.5 9.3v11.2M7.5 20.5V12h9v8.5"/>'}${
+    s === "gekocht" ? '<path d="M7.5 14.8h9M7.5 17.6h9M7.5 20.5h9"/>' : ""}</svg>`,
   hart: '<svg class="hart" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1z"/></svg>',
   auto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2 15.5l2-.5 3-3.5h7l4 3.5 4 .8V17H2z"/><circle cx="6.5" cy="17" r="2"/><circle cx="17.5" cy="17" r="2"/></svg>',
   circuit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M5 18c-2-2-1-6 1-8s3-5 6-5 4 2 6 2 3 2 2 4-4 2-4 4 3 3 1 5-5 0-7-1-3 1-5-1z"/></svg>',
@@ -734,6 +738,12 @@ function periode(lb) {
   return "";
 }
 
+// Leaderboard met een max aantal deelnemers dat vol is (of alles gereden)
+function lbKlaar(lb) {
+  const v = lb.voortgang || {};
+  return !!(parseInt(lb.max_deelnemers, 10) > 0 && v.totaal && v.gereden >= v.totaal);
+}
+
 function voortgangHTML(lb) {
   const v = lb.voortgang;
   if (!v || !v.totaal) return "";
@@ -746,7 +756,7 @@ function lbRij(g, lb, gekozen) {
   const v = lb.voortgang || {};
   const sub = [titel, stRegelTekst(lb), periode(lb)].filter(Boolean).join(" · ");
   return `<button class="rij ${String(lb.id) === gekozen ? "gekozen" : ""}" data-ga="${esc(pad("g", g.id, "lbs", lb.id))}" style="grid-template-columns:1fr auto">
-    <div><div class="naam">${esc(lb.naam)} ${lb.soort === "qualy" ? '<span class="label accent">QUALY</span>' : ""} ${lb.gearchiveerd ? '<span class="label">ARCHIEF</span>' : ""}</div>
+    <div><div class="naam">${esc(lb.naam)} ${lb.soort === "qualy" ? '<span class="label accent">QUALY</span>' : ""} ${lbKlaar(lb) ? '<span class="label accent">KLAAR</span>' : ""} ${lb.gearchiveerd ? '<span class="label">ARCHIEF</span>' : ""}</div>
       <div class="sub">${esc(sub)}</div>${voortgangHTML(lb)}</div>
     <div class="rechts" style="flex-direction:column;align-items:flex-end;gap:2px">
       <span>${meervoud(lb.tijden.filter((t) => t.positie).length, "tijd", "tijden")}</span>
@@ -842,6 +852,7 @@ function lbDetail(g, lb) {
     stRegelTekst(lb) ? `<span class="label">${esc(stRegelTekst(lb))}</span>` : "",
     periode(lb) ? `<span class="label">${esc(periode(lb))}</span>` : "",
     lb.zonder_mods ? `<span class="label">Zonder mods</span>` : "",
+    parseInt(lb.max_deelnemers, 10) > 0 ? `<span class="label${lbKlaar(lb) ? " accent" : ""}">${lbKlaar(lb) ? "KLAAR · " : ""}max ${parseInt(lb.max_deelnemers, 10)} deelnemers</span>` : "",
     qualy ? `<span class="label accent">Qualy · ${esc(lb.rondes || 4)} rondes${grid ? ` · grid van ${grid}` : ""}</span>` : "",
     lb.gearchiveerd ? `<span class="label">Archief</span>` : "",
   ].filter(Boolean).join("");
@@ -879,7 +890,7 @@ function lbDetail(g, lb) {
     <h2 style="margin-top:0">${esc(lb.naam)}</h2>
     <div class="lb-info">${labels}</div>
     ${statsKnop}
-    ${v.totaal ? `<div class="sub" style="margin-top:12px">${v.gereden} van ${v.totaal} auto's gereden${v.gereden >= v.totaal ? " · compleet!" : ""}</div>${voortgangHTML(lb)}` : ""}
+    ${v.totaal ? `<div class="sub" style="margin-top:12px">${parseInt(lb.max_deelnemers, 10) > 0 ? `${v.gereden} van ${v.totaal} plekken gevuld${lbKlaar(lb) ? " · KLAAR!" : ` · nog ${v.totaal - v.gereden} vrij`}` : `${v.gereden} van ${v.totaal} auto's gereden${v.gereden >= v.totaal ? " · compleet!" : ""}`}</div>${voortgangHTML(lb)}` : ""}
     ${lb.last_update ? `<div class="sub" style="margin-top:8px">Bijgewerkt ${esc(datumTekst(lb.last_update))}</div>` : ""}
     <div class="lb-tabel">
       ${geldig.length || ongeldig.length ? geldig.map(rij).join("") + ongeldig.map(rij).join("") : `<div class="leegtekst">Nog geen tijden op dit leaderboard.</div>`}
