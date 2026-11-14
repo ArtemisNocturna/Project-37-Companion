@@ -165,6 +165,11 @@ main { padding: 14px 14px calc(24px + var(--bodem)); max-width: 1400px; margin: 
 .rij .sub { color: var(--tekst-zacht); font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
 .rij .rechts { display: flex; gap: 6px; align-items: center; color: var(--tekst-zacht); font-size: 13px; }
 .hart { color: #F472B6; width: 18px; height: 18px; }
+/* Garage-icoon: niet in bezit (gestippeld, zacht) / gekocht / in garage (gloed) */
+.garage { width: 22px; height: 22px; flex: none; }
+.garage.g-niet { color: var(--tekst-zacht); opacity: .5; stroke-width: 1.4; stroke-dasharray: 1.6 2.2; }
+.garage.g-gekocht { color: var(--tekst); stroke-width: 1.5; }
+.garage.g-garage { color: var(--accent-licht); filter: drop-shadow(0 0 3px var(--gloed, var(--accent))); }
 .niet-bezit .naam { color: var(--tekst-zacht); }
 .label {
   display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 11px; font-weight: 700;

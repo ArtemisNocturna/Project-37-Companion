@@ -93,16 +93,40 @@ function stCategorieen(auto) {
   return m;
 }
 
+// 'Wie doet mee' (allowed_car op de pc): categorieën, klassen per
+// categorie en losse klassen (die doen altijd mee).
+function stMagMee(a, lb) {
+  const cats = new Set((lb.categories || []).map(norm));
+  const los = new Set((lb.losse_klassen || []).map(norm));
+  const klasse = norm(a.klasse);
+  if (klasse && los.has(klasse)) return true;
+  if (cats.has("alle")) return true;
+  if (!cats.size && !los.size) return true;          // oud leaderboard zonder keuze
+  const perCat = new Map(Object.entries(lb.klassen_per_categorie || {})
+    .filter(([, k]) => k && k.length).map(([c, k]) => [norm(c), new Set(k.map(norm))]));
+  return [...stCategorieen(a).keys()].some((c) => cats.has(c) && (!perCat.has(c) || perCat.get(c).has(klasse)));
+}
+
+// Korte tekst: 'GT, Prototype (LMDH GTP) + TSI Cup' (rule_text op de pc)
+function stRegelTekst(lb) {
+  const perCat = new Map(Object.entries(lb.klassen_per_categorie || {}).filter(([, k]) => k && k.length).map(([c, k]) => [norm(c), k]));
+  let t = (lb.categories || []).filter(Boolean).map((c) => perCat.has(norm(c)) ? `${c} (${perCat.get(norm(c)).join(", ")})` : c).join(", ");
+  const los = lb.losse_klassen || [];
+  if (los.length) t = (!t || norm(t) === "alle") ? los.join(", ") : `${t} + ${los.join(", ")}`;
+  return t;
+}
+
 // Auto's in bezit die op dit leaderboard mogen en nog geen tijd hebben
-// (get_candidates op de pc)
+// (get_candidates op de pc). Met 'alleen garage': geen auto's die op
+// Gekocht staan.
 function stNogTeRijden(g, lb) {
   const gebruikt = new Set(lb.tijden.filter((t) => t.auto).map((t) => norm(t.auto)));
-  const toegestaan = new Set((lb.categories || []).map(norm));
   const van = parseInt(lb.bouwjaar_van, 10), tot = parseInt(lb.bouwjaar_tot, 10);
   const metJaar = !isNaN(van) || !isNaN(tot);
   return g.autos.filter((a) => {
     if (!norm(a.naam) || !a.in_bezit || gebruikt.has(norm(a.naam))) return false;
-    if (!toegestaan.has("alle") && ![...stCategorieen(a).keys()].some((c) => toegestaan.has(c))) return false;
+    if (lb.alleen_garage && a.garage === "gekocht") return false;
+    if (!stMagMee(a, lb)) return false;
     if (lb.zonder_mods && a.mod) return false;
     if (metJaar) {
       const m = String(a.jaartal || "").match(/(?<!\d)(\d{4})(?!\d)/);
@@ -588,7 +612,9 @@ function gameStatsHTML(g) {
   const zet = (html, p, t) => cellen.push(stCel(html, p, t));
 
   // Kerngetallen
-  zet(stGetal("Auto's", `${s.owned}/${s.autos}`, "in bezit", g.autos.length ? () =>
+  const gekocht = g.garage_stap ? g.autos.filter((a) => a._garage === "gekocht").length : 0;
+  zet(stGetal("Auto's", `${s.owned}/${s.autos}`,
+    g.garage_stap ? `in bezit  ·  ${s.owned - gekocht} in garage  ·  ${gekocht} gekocht` : "in bezit", g.autos.length ? () =>
     stDetails("Auto's in bezit", AUTO_LIJST, g.autos.filter((a) => a.in_bezit)) : null), 1, 1);
   zet(stGetal("Circuits", s.circuits, "in je lijst"), 1, 1);
   const actief = s.leaderboards - s.archived;
@@ -669,7 +695,9 @@ function lbStatsHTML(g, lb) {
     delen.push([c.circuit, c.layout].filter(Boolean).join(" "));
     if (c.lengte) delen.push(`${c.lengte} km`);
   } else if (lb.circuit) delen.push(lb.circuit);
-  if ((lb.categories || []).length) delen.push(lb.categories.join(", "));
+  const regel = stRegelTekst(lb);
+  if (regel) delen.push(regel);
+  if (lb.alleen_garage && g.garage_stap) delen.push("alleen uit je garage");
   const periodeTekst = periode(lb);
   if (periodeTekst) delen.push(periodeTekst.replace("Bouwjaar", "bouwjaar").replace("–", "-"));
 
