@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.11";
+const COMPANION_VERSIE = "1.0.12";
 const FORMAAT = "project37-mobiel";
 // Versie 2 (pc-app 1.1o): garage-systeem (game.garage_stap, auto.garage)
 const HOOGSTE_VERSIE = 2;
