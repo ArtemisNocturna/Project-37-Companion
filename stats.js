@@ -149,7 +149,7 @@ function lbStats(g, lb) {
   const v = lb.voortgang || {};
 
   const s = {
-    circuit, lengte,
+    circuit, lengte, car_speed: [],
     count: geldig.length,
     invalid: lb.tijden.length - geldig.length,
     done: v.gereden || 0,
@@ -188,6 +188,9 @@ function lbStats(g, lb) {
     top_speed: stKmh(lengte, rows[0].ms),
     avg_speed: stKmh(lengte, gem),
   });
+  // Snelheid per auto (alleen als het circuit een lengte heeft)
+  s.car_speed = rows.map((r) => ({ ...r, speed: stKmh(lengte, r.ms) }))
+    .filter((r) => r.speed).sort((a, b) => b.speed - a.speed);
 
   // Per klasse
   const klassen = new Map();
@@ -259,7 +262,7 @@ function gameStats(g) {
   };
   const gereden = new Set();
   const klasseGap = new Map(), klasseAutos = new Map(), klasseSnelheid = new Map(),
-    klasseAantal = new Map(), klasseRijen = new Map(), autoRijen = new Map(), autoAantal = new Map(),
+    klasseAantal = new Map(), klasseRijen = new Map(), autoRijen = new Map(), autoAantal = new Map(), autoSnelheid = new Map(),
     podium = new Map(), types = new Map();
   const voeg = (m, k, v) => { if (!m.has(k)) m.set(k, []); m.get(k).push(v); };
   const datums = [];
@@ -285,7 +288,7 @@ function gameStats(g) {
       const rij = { ...r, leaderboard: lb.naam || "", speed: snel };
       voeg(klasseRijen, k, rij);
       voeg(autoRijen, naam, rij);
-      if (snel) voeg(klasseSnelheid, k, snel);
+      if (snel) { voeg(klasseSnelheid, k, snel); voeg(autoSnelheid, naam, rij); }
       if (r.pos <= 3) {
         if (!podium.has(naam)) podium.set(naam, { p1: 0, top3: 0, rows: [] });
         const p = podium.get(naam);
@@ -313,6 +316,12 @@ function gameStats(g) {
   s.class_speed = [...klasseSnelheid].map(([k, v]) => ({
     klasse: k, value: gem(v), cars: klasseAutos.get(k).size, few: weinig(k),
     rows: klasseRijen.get(k).filter((r) => r.speed),
+  })).sort((a, b) => b.value - a.value);
+  // Gemiddelde snelheid per auto over alle leaderboards met een
+  // circuitlengte. Op maar één leaderboard = minder betrouwbaar (*).
+  s.car_speed = [...autoSnelheid].map(([k, v]) => ({
+    auto: k, klasse: v[0].klasse, value: gem(v.map((r) => r.speed)), lbs: v.length, few: v.length < 2,
+    rows: [...v].sort((a, b) => b.speed - a.speed),
   })).sort((a, b) => b.value - a.value);
   s.class_count = [...klasseAantal].map(([k, v]) => ({ klasse: k, value: v, rows: klasseRijen.get(k) }))
     .sort((a, b) => b.value - a.value);
@@ -352,6 +361,13 @@ const K_WINST = ["Verbetering", (r) => stWinst(r.gain), "rechts"];
 const LB_RIJEN = [K_POS, K_AUTO, K_KLASSE, K_TIJD, K_GAP];
 const GAME_RIJEN = [K_LB, K_POS, K_AUTO, K_KLASSE, K_TIJD, K_GAP_PCT];
 const SNELHEID_RIJEN = [K_LB, K_POS, K_AUTO, K_KLASSE, K_TIJD, K_SNELHEID];
+const LB_SNELHEID_RIJEN = [K_POS, K_AUTO, K_KLASSE, K_TIJD, K_SNELHEID];
+const AUTO_SNELHEID_LIJST = [
+  ["Auto", (c) => c.auto, "naam"],
+  ["Klasse", (c) => c.klasse || "-"],
+  ["Leaderboards", (c) => `${c.lbs} leaderboard${c.lbs === 1 ? "" : "s"}`],
+  ["Gem. snelheid", (c) => stSnelheid(c.value), "rechts"],
+];
 const AUTO_LIJST = [
   ["Auto", (a) => a.naam || "", "naam"],
   ["Klasse", (a) => a.klasse || "-"],
@@ -432,8 +448,11 @@ function stGetal(titel, waarde, sub = "", klik = null) {
   </div>`;
 }
 
-function stKaart(titel, inhoud, noot = "") {
-  return `<div class="glas st-kaart"><h4>${esc(titel)}</h4><div class="inhoud">${inhoud}</div>
+function stKaart(titel, inhoud, noot = "", alle = null) {
+  const kop = alle
+    ? `<div class="st-kop"><h4>${esc(titel)}</h4><button class="chip st-alle" ${stAttr(alle.klik)}>alle ${alle.aantal}</button></div>`
+    : `<h4>${esc(titel)}</h4>`;
+  return `<div class="glas st-kaart">${kop}<div class="inhoud">${inhoud}</div>
     ${noot ? `<div class="noot">${esc(noot).replace(/\n/g, "<br>")}</div>` : ""}</div>`;
 }
 
@@ -648,6 +667,17 @@ function gameStatsHTML(g) {
     label: p.auto, value: p.top3, text: `${p.p1}× P1  ·  ${p.top3}× top 3`, payload: p.rows,
   })), { klik: stNaarDetails("", GAME_RIJEN) })), 2, 2);
 
+  // Gemiddelde snelheid per auto
+  noot = "Gemiddelde van de snelheden op alle leaderboards waarvan het circuit een lengte heeft.";
+  if (s.car_speed.some((c) => c.few)) noot += "\n* Op maar één leaderboard gereden, dus minder betrouwbaar.";
+  zet(stKaart("Gemiddelde snelheid per auto", stBalken(s.car_speed.map((c) => ({
+    label: stSter(c.auto, c.few), value: c.value, text: stSnelheid(c.value),
+    tooltip: `${c.klasse}  ·  ${c.lbs} leaderboard(s)`, payload: c.rows,
+    summary: `Gemiddeld ${stSnelheid(c.value)} over ${c.lbs} leaderboard(s)`,
+  })), { klik: stNaarDetails("", SNELHEID_RIJEN) }), noot,
+    s.car_speed.length > 10 ? { aantal: s.car_speed.length,
+      klik: () => stDetails("Gemiddelde snelheid per auto", AUTO_SNELHEID_LIJST, s.car_speed) } : null), 4, 2);
+
   // Meest gereden
   zet(stKaart("Meest gereden klassen", stBalken(s.class_count.map((c) => ({
     label: c.klasse, value: c.value, text: `${c.value}×`, payload: c.rows,
@@ -732,6 +762,17 @@ function lbStatsHTML(g, lb) {
     payload: k.rows,
     summary: `Gemiddeld ${stMs(k.avg_ms)}  ·  beste ${stMs(k.best_ms)}  ·  ${stAantal(k.count)}`,
   })), { lagerIsBeter: true, klik: stNaarDetails("Klasse: ", LB_RIJEN) }), klassen.some((k) => k.few) ? ST_WEINIG_NOOT : ""), 3, 2);
+
+  // Snelheid per auto
+  zet(s.lengte
+    ? stKaart("Snelheid per auto", stBalken(s.car_speed.map((r) => ({
+      label: r.auto, value: r.speed, text: stSnelheid(r.speed),
+      tooltip: `${r.klasse}  ·  ${r.tijd}  ·  P${r.pos}`, payload: [r],
+    })), { klik: stNaarDetails("", LB_SNELHEID_RIJEN) }),
+      `Gemiddelde snelheid over een ronde (${c.lengte} km).`,
+      s.car_speed.length > 10 ? { aantal: s.car_speed.length,
+        klik: () => stDetails("Snelheid per auto", LB_SNELHEID_RIJEN, s.car_speed) } : null)
+    : stKaart("Snelheid per auto", stLeeg("Geef het circuit een lengte, dan zie je hier de snelheid per auto.")), 4, 2);
 
   // Verdeling klassen en categorieën
   zet(stKaart("Klassen op het leaderboard", stDonut(klassen.map((k) => ({ label: k.klasse, count: k.count, payload: k.rows })),
