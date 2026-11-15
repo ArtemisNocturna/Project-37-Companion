@@ -468,3 +468,19 @@ button.st-leg:active { background: var(--vlak-hover); color: var(--tekst); }
 .gleeg { color: var(--tekst-zacht); font-size: 13px; padding: 4px 2px; }
 /* Op de tablet (ingezoomd) klopt vh niet: hoogte uit JS gebruiken */
 .venster { max-height: calc(var(--hoogte, 100vh) * .88); }
+
+/* Tabbladen blijven bovenin hangen; weg bij naar beneden scrollen, terug bij omhoog */
+.tabs {
+  position: sticky; top: var(--kop-h, 64px); z-index: 15;
+  transition: transform .22s ease, opacity .22s ease;
+  box-shadow: 0 6px 16px rgba(0,0,0,.45);
+}
+body.tabs-weg .tabs { transform: translateY(calc(-100% - var(--kop-h, 64px))); opacity: 0; pointer-events: none; }
+@media (min-width: 900px) {
+  .werk > .detailkant {
+    top: calc(var(--kop-h, 70px) + var(--tabs-h, 52px) + 24px);
+    max-height: calc(var(--hoogte, 100vh) - var(--kop-h, 70px) - var(--tabs-h, 52px) - 40px);
+    transition: top .22s ease, max-height .22s ease;
+  }
+  body.tabs-weg .werk > .detailkant { top: calc(var(--kop-h, 70px) + 14px); max-height: calc(var(--hoogte, 100vh) - var(--kop-h, 70px) - 30px); }
+}

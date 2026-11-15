@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.13";
+const COMPANION_VERSIE = "1.0.14";
 const FORMAAT = "project37-mobiel";
 // Versie 2 (pc-app 1.1o): garage-systeem (game.garage_stap, auto.garage)
 const HOOGSTE_VERSIE = 2;
@@ -389,13 +389,45 @@ function ga(hash, vervangen = false) {
 const app = $("#app");
 
 function teken() {
+  requestAnimationFrame(zetMaten);
   const r = route();
   document.body.style.overflow = "";
   if (r.scherm === "controle") return tekenControle();
   if (!staat.data) return tekenWelkom();
-  if (r.scherm === "game" && game(r.game)) return r.stats ? tekenLbStats(r) : tekenGame(r);
+  const getekend = staat.getekend;
+  staat.getekend = null;
+  if (r.scherm === "game" && game(r.game)) {
+    if (r.stats) return tekenLbStats(r);
+    // Tablet, zelfde lijst, ander item: alleen de rechterkant vervangen,
+    // dan blijft de lijst links precies staan waar hij stond
+    if (r.id && breed() && getekend === `${r.game}|${r.tab}` && $(".werk .detailkant")) return tekenAlleenDetail(game(r.game), r);
+    return tekenGame(r);
+  }
   return tekenHome();
 }
+
+// ------------------------------------------------------------
+// Tabbladen: weg bij naar beneden scrollen, terug bij een klein
+// stukje omhoog
+// ------------------------------------------------------------
+function zetMaten() {
+  const kopEl = $(".kop"), tabs = $(".tabs");
+  const r = document.documentElement.style;
+  if (kopEl) r.setProperty("--kop-h", `${kopEl.offsetHeight}px`);
+  if (tabs) r.setProperty("--tabs-h", `${tabs.offsetHeight}px`);
+}
+function toonTabs(zichtbaar) {
+  document.body.classList.toggle("tabs-weg", !zichtbaar);
+}
+let vorigeY = window.scrollY;
+window.addEventListener("scroll", () => {
+  const y = window.scrollY, d = y - vorigeY;
+  vorigeY = y;
+  if (!$(".tabs")) return;
+  if (y < 80) toonTabs(true);
+  else if (d > 6) toonTabs(false);
+  else if (d < -6) toonTabs(true);
+}, { passive: true });
 
 function kop(titel, sub, links = "", rechts = "") {
   return `<header class="kop">
@@ -656,6 +688,25 @@ function tekenGame(r) {
   }
   const key = `${g.id}|${r.tab}`;
   if (!r.id || breed()) window.scrollTo(0, staat.scroll[key] || 0);
+  if (breed()) staat.getekend = key;
+  volgLijst();
+}
+
+function tekenAlleenDetail(g, r) {
+  const kant = $(".detailkant");
+  kant.innerHTML = detailHTML(g, r.tab, r.id);
+  kant.scrollTop = 0;
+  activeerPlaatjes(kant);
+  const doel = pad("g", g.id, r.tab, r.id);
+  document.querySelectorAll(".lijst .rij.gekozen").forEach((x) => x.classList.remove("gekozen"));
+  document.querySelectorAll(".lijst .rij").forEach((x) => { if (x.dataset.ga === doel) x.classList.add("gekozen"); });
+  if (staat.schuif) { ($(".detail", kant) || kant).classList.add("schuif-" + staat.schuif); staat.schuif = null; }
+  staat.getekend = `${g.id}|${r.tab}`;
+  volgLijst();
+}
+
+// Tablet: na swipen in het detail de gekozen rij links in beeld houden
+function volgLijst() {
   if (staat.volgLijst) {
     staat.volgLijst = false;
     const rij = $(".rij.gekozen");
@@ -918,7 +969,8 @@ document.addEventListener("click", (e) => {
   const r = route();
   if (el.dataset.ga) {
     if (r.scherm === "home") staat.scroll.home = window.scrollY;
-    if (r.scherm === "game" && !r.id) staat.scroll[`${r.game}|${r.tab}`] = window.scrollY;
+    // Tablet: ook als er al iets open staat (anders springt de lijst naar boven)
+    if (r.scherm === "game" && (!r.id || breed())) staat.scroll[`${r.game}|${r.tab}`] = window.scrollY;
     // Op een tablet: een andere auto kiezen vervangt de vorige (geen
     // lange rij om terug door te bladeren)
     const zelfdeLijst = r.scherm === "game" && breed() && r.id && el.closest(".lijst");
