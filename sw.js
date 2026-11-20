@@ -1,6 +1,6 @@
 // Project 37 companion: zorgt dat de app ook zonder internet opent.
 // Bij een nieuwe versie van de app: VERSIE ophogen.
-const VERSIE = "p37-companion-1.0.14";
+const VERSIE = "p37-companion-1.0.15";
 const BESTANDEN = [
   "./",
   "index.html",
@@ -25,7 +25,9 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== VERSIE).map((k) => caches.delete(k)))
+      // Alleen eigen oude versies weggooien, niet die van de dev-companion
+      Promise.all(keys.filter((k) => k !== VERSIE && k.startsWith("p37-companion-")
+        && !k.startsWith("p37-companion-dev-")).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
@@ -34,6 +36,8 @@ self.addEventListener("activate", (event) => {
 // Eerst online proberen (dan krijg je updates), anders de bewaarde versie.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  // De dev-companion (map /dev/) regelt zijn eigen bestanden
+  if (new URL(event.request.url).pathname.includes("/dev/")) return;
   event.respondWith(
     fetch(event.request)
       .then((response) => {

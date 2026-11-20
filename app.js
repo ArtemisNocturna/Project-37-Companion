@@ -9,7 +9,11 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.0.14";
+const COMPANION_VERSIE = "1.0.15";
+// De dev-companion staat in de map /dev/ van dezelfde site. Hij gebruikt
+// dezelfde code, maar eigen opslag, zodat dev-data en echte data nooit
+// door elkaar lopen. Bij een release gaat de dev-code naar de hoofdmap.
+const DEV = /\/dev\//.test(location.pathname);
 const FORMAAT = "project37-mobiel";
 // Versie 2 (pc-app 1.1o): garage-systeem (game.garage_stap, auto.garage)
 const HOOGSTE_VERSIE = 2;
@@ -150,7 +154,7 @@ const Opslag = {
   open() {
     if (this.db) return Promise.resolve(this.db);
     return new Promise((ok, fout) => {
-      const req = indexedDB.open("project37", 1);
+      const req = indexedDB.open(DEV ? "project37-dev" : "project37", 1);
       req.onupgradeneeded = () => {
         req.result.createObjectStore("kv");
         req.result.createObjectStore("plaatjes");
@@ -292,6 +296,9 @@ async function leesExport(bestand) {
     if (!json) throw new Error("Dit is geen export voor de mobiele app. Maak hem in Project 37 met Instellingen > Gegevens > Exporteer voor mobiel.");
     const data = JSON.parse(await json.async("string"));
     if (data.formaat !== FORMAAT) throw new Error("Dit bestand komt niet uit 'Exporteer voor mobiel'.");
+    if (data.dev && !DEV) {
+      throw new Error("Deze export komt uit de dev build van Project 37. Lees hem in de dev-companion in (adres eindigt op /dev/), dan blijft je echte app schoon.");
+    }
     if ((data.versie || 0) > HOOGSTE_VERSIE) {
       throw new Error("Deze export is gemaakt met een nieuwere Project 37. Ververs de companion (even online openen) en probeer het opnieuw.");
     }
@@ -431,6 +438,7 @@ window.addEventListener("scroll", () => {
 
 function kop(titel, sub, links = "", rechts = "") {
   return `<header class="kop">
+    ${DEV ? `<div class="dev-balk">DEV BUILD · niet je echte app</div>` : ""}
     <div>${links}</div>
     <div><h1 class="titel">${esc(titel)}</h1>${sub ? `<p class="subkop">${esc(sub)}</p>` : ""}</div>
     <div>${rechts}</div>
@@ -449,17 +457,17 @@ function tekenWelkom() {
     </ol>
     <p style="margin-top:22px"><button class="knop neon" data-actie="laden">${ICOON.laden} Gegevens laden</button></p>
     ${installKnop()}
-    <p class="voet">Je gegevens blijven op dit apparaat en gaan nergens naartoe.<br>Companion ${COMPANION_VERSIE} · <a class="link" href="#/controle">Installatie controleren</a></p>
+    <p class="voet">Je gegevens blijven op dit apparaat en gaan nergens naartoe.<br>Companion ${COMPANION_VERSIE}${DEV ? " DEV" : ""} · <a class="link" href="#/controle">Installatie controleren</a></p>
   </div></main>`;
 }
 
 // Per apparaat onthouden (los van de pc-app)
 function bewaard(key, standaard) {
-  try { const v = localStorage.getItem(key); return v === null ? standaard : JSON.parse(v); }
+  try { const v = localStorage.getItem((DEV ? "dev_" : "") + key); return v === null ? standaard : JSON.parse(v); }
   catch (e) { return standaard; }
 }
 function bewaar(key, waarde) {
-  try { localStorage.setItem(key, JSON.stringify(waarde)); } catch (e) { /* geen opslag: niet erg */ }
+  try { localStorage.setItem((DEV ? "dev_" : "") + key, JSON.stringify(waarde)); } catch (e) { /* geen opslag: niet erg */ }
 }
 function onthoudGame(id) {
   const lijst = bewaard("p37_recent", []).filter((x) => x !== String(id));
@@ -493,11 +501,11 @@ function tekenHome() {
     </div>` : ""}
     ${d.games.length ? `<div class="tegels">${tegels}</div>` : `<div class="leegtekst">Er staan nog geen games in je gegevens.</div>`}
     <div class="exportregel onderaan">
-      <span>Gegevens van ${esc(datumTekst(d.gemaakt))}${d.app_versie ? ` · Project 37 ${esc(d.app_versie)}` : ""}</span>
+      <span>Gegevens van ${esc(datumTekst(d.gemaakt))}${d.app_versie ? ` · Project 37 ${esc(d.app_versie)}` : ""}${DEV ? (d.dev ? " · dev-export" : " · release-export") : ""}</span>
       <button class="knop" data-actie="laden">${ICOON.laden} Gegevens bijwerken</button>
     </div>
     ${installKnop()}
-    <p class="voet">Companion ${COMPANION_VERSIE} · alleen bekijken · je gegevens blijven op dit apparaat<br><a class="link" href="#/controle">Installatie controleren</a></p>
+    <p class="voet">Companion ${COMPANION_VERSIE}${DEV ? " DEV" : ""} · alleen bekijken · je gegevens blijven op dit apparaat<br><a class="link" href="#/controle">Installatie controleren</a></p>
   </main>`;
   activeerPlaatjes(app);
   window.scrollTo(0, staat.scroll.home || 0);

@@ -56,6 +56,12 @@ img { display: block; }
   text-shadow: 0 0 14px color-mix(in srgb, var(--gloed) 85%, transparent), 0 0 2px var(--gloed);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* Alleen in de dev-companion (map /dev/) */
+.dev-balk {
+  grid-column: 1 / -1; margin: -4px -12px 2px; padding: 3px 8px;
+  text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .16em;
+  color: #1a0d00; background: #ffb020;
+}
 .subkop { text-align: center; color: var(--tekst-zacht); font-size: 13px; margin: 2px 0 0; }
 
 .icoonknop {
