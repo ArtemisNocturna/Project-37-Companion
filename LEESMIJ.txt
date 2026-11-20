@@ -1,4 +1,4 @@
-PROJECT 37 COMPANION 1.0.14
+PROJECT 37 COMPANION 1.0.15
 ==========================
 
 Een web-app om je auto's, circuits en leaderboards van Project 37 te
@@ -32,3 +32,11 @@ NIEUWE VERSIE VAN DE COMPANION
 In je repository: "Add file" > "Upload files", sleep de nieuwe
 bestanden erin (ze vervangen de oude) en klik "Commit changes".
 Je geladen export blijft gewoon staan.
+
+DEV-COMPANION
+-------------
+In de map dev/ staat de dev-companion, voor het testen van nieuwe
+versies: https://artemisnocturna.github.io/Project-37-Companion/dev/
+Hij heeft eigen opslag en kan naast de echte app geïnstalleerd worden.
+Hij leest exports van de dev build én gewone exports. De gewone
+companion weigert exports van de dev build.
