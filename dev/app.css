@@ -520,3 +520,24 @@ body.tabs-weg .tabs { transform: translateY(calc(-100% - var(--kop-h, 64px))); o
 .ek-waarde { font-size: 20px; font-weight: 900; margin-top: 3px; overflow-wrap: anywhere; line-height: 1.2; }
 .eindkaart.later .ek-waarde { color: #71717a; }
 .ek-sub { color: #A1A1AA; font-size: 12.5px; margin-top: 3px; line-height: 1.35; }
+
+/* ---------- Crossover (pc-app 1.2aa) ---------- */
+.xchip {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid #FF3FD8; background: rgba(255, 63, 216, .12);
+  color: #FFB3F0; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  white-space: nowrap; vertical-align: middle;
+}
+.xchip.klein { font-size: 10px; padding: 1px 7px; }
+.xlabel {
+  display: inline-block; padding: 1px 6px; margin-left: 4px; border-radius: 4px;
+  color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .03em;
+  vertical-align: middle; background: #2563EB;
+}
+.xlabel.x1 { background: #7C3AED; } .xlabel.x2 { background: #DB2777; }
+.xlabel.x3 { background: #0D9488; } .xlabel.x4 { background: #EA580C; }
+.xlabel.x5 { background: #65A30D; }
+.tegel.crossover { border-color: rgba(255, 63, 216, .55); }
+.tegel .xtegel { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.tegel .xtegel .xchip { font-size: 14px; padding: 6px 16px; }
+.lb-info .xlabel { margin-left: 0; }
