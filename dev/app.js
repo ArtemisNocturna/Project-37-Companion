@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.2-dev.2";
+const COMPANION_VERSIE = "1.2-dev.3";
 // De dev-companion staat in de map /dev/ van dezelfde site. Hij gebruikt
 // dezelfde code, maar eigen opslag, zodat dev-data en echte data nooit
 // door elkaar lopen. Bij een release gaat de dev-code naar de hoofdmap.
@@ -255,6 +255,13 @@ function zetThema(thema) {
 
 // Extra gegevens die de schermen vaak nodig hebben, één keer uitrekenen
 function bereidVoor(data) {
+  // Crossovers (pc-app 1.2aa): elk als een eigen "game" achteraan
+  data.games = data.games || [];
+  for (const x of Array.isArray(data.crossovers) ? data.crossovers : []) {
+    if (!x || !x.id || data.games.some((g) => String(g.id) === String(x.id))) continue;
+    x._crossover = (x.crossover && Array.isArray(x.crossover.games)) ? x.crossover.games : [];
+    data.games.push(x);
+  }
   for (const g of data.games) {
     g.autos = g.autos || [];
     g.circuits = g.circuits || [];
@@ -282,7 +289,32 @@ function bereidVoor(data) {
       lb._zoek = norm([lb.naam, lb.circuit, lb.layout, (lb.categories || []).join(" ")].join(" "));
     }
   }
+  // Plaatjes van een crossover komen uit de echte games
+  for (const g of data.games.filter((x) => x._crossover)) {
+    const echt = (gid) => data.games.find((x) => String(x.id) === String(gid) && !x._crossover);
+    for (const a of g.autos) {
+      if (a.plaatje) continue;
+      const bronnen = [a.bron, ...(Array.isArray(a.crossover_autos) ? a.crossover_autos : [])];
+      for (const b of bronnen) {
+        const p = Array.isArray(b) ? echt(b[0])?._autoOpId.get(String(b[1]))?.plaatje : null;
+        if (p) { a.plaatje = p; break; }
+      }
+    }
+    for (const c of g.circuits) {
+      if (!c.plaatje && Array.isArray(c.bron)) c.plaatje = echt(c.bron[0])?._circuitOpId.get(String(c.bron[1]))?.plaatje || null;
+    }
+    g._kort = new Map(g._crossover.map((x) => [String(x.game_id), x.kort || x.naam || ""]));
+  }
   return data;
+}
+
+// Crossover: de labeltjes (AC, AMS2) en in welke game een tijd gereden is
+function crossLabels(g) {
+  return (g._crossover || []).map((x, i) => `<span class="xlabel x${i % 6}">${esc(x.kort || x.naam)}</span>`).join("");
+}
+function crossGame(g, t) {
+  if (!g._crossover) return "";
+  return g._kort.get(String(t.game_id)) || (g._crossover[0] && g._crossover[0].kort) || "";
 }
 
 // ------------------------------------------------------------
@@ -490,8 +522,8 @@ function tekenHome() {
   const d = staat.data;
   const volgorde = bewaard("p37_volgorde", "recent");
   const tegels = gesorteerdeGames(d.games).map((g) => `
-    <button class="tegel" data-ga="${esc(pad("g", g.id, "autos"))}">
-      ${g.plaatje ? `<div style="width:100%;height:100%" data-img="${esc(g.plaatje)}"></div>` : `<div class="leeg">${f2004SVG()}</div>`}
+    <button class="tegel${g._crossover ? " crossover" : ""}" data-ga="${esc(pad("g", g.id, g._crossover ? "lbs" : "autos"))}">
+      ${g.plaatje ? `<div style="width:100%;height:100%" data-img="${esc(g.plaatje)}"></div>` : g._crossover ? `<div class="leeg xtegel"><span class="xchip">⇄ CROSSOVER</span><span class="xlabels">${crossLabels(g)}</span></div>` : `<div class="leeg">${f2004SVG()}</div>`}
       <div class="onder"><div class="naam">${esc(g.naam)}</div>
       <div class="tel">${meervoud(g.autos.length, "auto", "auto's")} · ${meervoud(g.circuits.length, "circuit", "circuits")} · ${meervoud(g.leaderboards.length, "leaderboard", "leaderboards")}</div></div>
     </button>`).join("");
@@ -862,9 +894,21 @@ function lbRij(g, lb, gekozen) {
   const { titel } = lbCircuit(g, lb);
   const v = lb.voortgang || {};
   const sub = [titel, stRegelTekst(lb), periode(lb)].filter(Boolean).join(" · ");
+  if (g._crossover) return lbRijX(g, lb, gekozen, sub, v);
   return `<button class="rij ${String(lb.id) === gekozen ? "gekozen" : ""}" data-ga="${esc(pad("g", g.id, "lbs", lb.id))}" style="grid-template-columns:1fr auto">
     <div><div class="naam">${esc(lb.naam)} ${lb.soort === "qualy" ? '<span class="label accent">QUALY</span>' : ""} ${lbKlaar(lb) ? '<span class="label accent">KLAAR</span>' : ""} ${lb.gearchiveerd ? '<span class="label">ARCHIEF</span>' : ""}</div>
       <div class="sub">${esc(sub)}</div>${voortgangHTML(lb)}</div>
+    <div class="rechts" style="flex-direction:column;align-items:flex-end;gap:2px">
+      <span>${meervoud(lb.tijden.filter((t) => t.positie).length, "tijd", "tijden")}</span>
+      ${v.totaal ? `<span>${v.gereden} van ${v.totaal}</span>` : ""}
+    </div>
+  </button>`;
+}
+
+function lbRijX(g, lb, gekozen, sub, v) {
+  return `<button class="rij ${String(lb.id) === gekozen ? "gekozen" : ""}" data-ga="${esc(pad("g", g.id, "lbs", lb.id))}" style="grid-template-columns:1fr auto">
+    <div><div class="naam">${esc(lb.naam)} <span class="xchip klein">⇄ CROSSOVER</span> ${lb.gearchiveerd ? '<span class="label">ARCHIEF</span>' : ""}</div>
+      <div class="sub">${esc(sub)} ${crossLabels(g)}</div>${voortgangHTML(lb)}</div>
     <div class="rechts" style="flex-direction:column;align-items:flex-end;gap:2px">
       <span>${meervoud(lb.tijden.filter((t) => t.positie).length, "tijd", "tijden")}</span>
       ${v.totaal ? `<span>${v.gereden} van ${v.totaal}</span>` : ""}
@@ -962,6 +1006,7 @@ function lbDetail(g, lb) {
     parseInt(lb.max_deelnemers, 10) > 0 ? `<span class="label${lbKlaar(lb) ? " accent" : ""}">${lbKlaar(lb) ? "KLAAR · " : ""}max ${parseInt(lb.max_deelnemers, 10)} deelnemers</span>` : "",
     qualy ? `<span class="label accent">Qualy · ${esc(lb.rondes || 4)} rondes${grid ? ` · grid van ${grid}` : ""}</span>` : "",
     lb.gearchiveerd ? `<span class="label">Archief</span>` : "",
+    g._crossover ? `<span class="xchip">⇄ CROSSOVER</span>${crossLabels(g)}` : "",
   ].filter(Boolean).join("");
   const statsKnop = `<button class="knop neon klein stats-knop" data-ga="${esc(pad("g", g.id, "lbs", lb.id, "stats"))}">${ICOON.stats} Statistieken</button>`;
 
@@ -986,7 +1031,7 @@ function lbDetail(g, lb) {
     const doel = auto ? `data-ga="${esc(pad("g", g.id, "autos", auto.id))}"` : "";
     return `<${auto ? "button" : "div"} class="${cls}" ${doel}>
       <div class="pos">${pos || "–"}</div>
-      <div><div class="auto">${esc(t.auto)}</div><div class="sub">${esc(sub)}</div></div>
+      <div><div class="auto">${esc(t.auto)}${crossGame(g, t) ? ` <span class="xlabel x${Math.max(0, (g._crossover || []).findIndex((x) => (x.kort || x.naam) === crossGame(g, t))) % 6}">${esc(crossGame(g, t))}</span>` : ""}</div><div class="sub">${esc(sub)}</div></div>
       <div><div class="tijd">${esc(t.tijd || "")}</div><div class="delta">${esc(rechtsOnder || (pos ? "" : "ongeldig"))}</div></div>
       ${Array.isArray(t.rondes) && t.rondes.length ? `<div class="rondes">Rondes: ${t.rondes.map(esc).join("  ")}</div>` : ""}
       ${tekst(t.opmerking) ? `<div class="opm">“${esc(t.opmerking)}”</div>` : ""}

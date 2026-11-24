@@ -1,6 +1,6 @@
 // Project 37 DEV-companion: zorgt dat de app ook zonder internet opent.
 // Bij een nieuwe versie van de app: VERSIE ophogen.
-const VERSIE = "p37-companion-dev-1.2-dev.2";
+const VERSIE = "p37-companion-dev-1.2-dev.3";
 const BESTANDEN = [
   "./",
   "index.html",
