@@ -490,3 +490,33 @@ body.tabs-weg .tabs { transform: translateY(calc(-100% - var(--kop-h, 64px))); o
   }
   body.tabs-weg .werk > .detailkant { top: calc(var(--kop-h, 70px) + 14px); max-height: calc(var(--hoogte, 100vh) - var(--kop-h, 70px) - 30px); }
 }
+
+/* ---------- Jaaroverzicht (eindkaart, pc-app 1.2x) ---------- */
+.wrapped-banner {
+  display: flex; align-items: center; gap: 14px; width: 100%; margin-bottom: 14px; padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, #F0ABFC 45%, transparent); border-radius: 16px; text-align: left; color: #F5F3FF;
+  background: radial-gradient(ellipse 80% 140% at 0% 0%, #5b21b6, transparent 70%), radial-gradient(ellipse 80% 140% at 100% 100%, #be185d, transparent 70%), #12091f;
+  box-shadow: 0 0 18px color-mix(in srgb, #be185d 35%, transparent);
+}
+.wb-jaar { font-size: 34px; font-weight: 900; color: #F0ABFC; letter-spacing: .02em; }
+.wb-tekst { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.wb-tekst b { font-size: 18px; font-weight: 900; letter-spacing: .2em; }
+.wb-tekst small { color: #D4D4D8; font-size: 13px; margin-top: 2px; }
+.wb-pijl { font-size: 30px; color: #F0ABFC; }
+.wrapped-games { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.wrapped-kaart {
+  padding: 22px 16px 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,.12); color: #F5F3FF;
+  background: radial-gradient(ellipse 90% 60% at 0% 0%, #5b21b6, transparent 70%), radial-gradient(ellipse 90% 60% at 100% 100%, #be185d, transparent 70%), #0e0818;
+}
+.wk-boven { text-align: center; color: #F0ABFC; font-size: 12px; font-weight: 700; letter-spacing: .4em; }
+.wk-titel { text-align: center; margin: 4px 0 2px; font-size: 40px; font-weight: 900; letter-spacing: .06em; }
+.wk-titel span { color: #F0ABFC; }
+.wk-game { text-align: center; color: #D4D4D8; font-size: 15px; }
+.eindkaarten { display: grid; gap: 10px; margin-top: 18px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 900px) { .eindkaarten { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; } .wrapped-kaart { padding: 30px 28px 26px; } .wk-titel { font-size: 56px; } }
+.eindkaart { padding: 12px 14px; border-radius: 14px; background: rgba(10,7,18,.6); border: 1px solid rgba(255,255,255,.14); min-width: 0; }
+.eindkaart.later { border-style: dashed; }
+.ek-kop { color: #F0ABFC; font-size: 10.5px; font-weight: 800; letter-spacing: .18em; }
+.ek-waarde { font-size: 20px; font-weight: 900; margin-top: 3px; overflow-wrap: anywhere; line-height: 1.2; }
+.eindkaart.later .ek-waarde { color: #71717a; }
+.ek-sub { color: #A1A1AA; font-size: 12.5px; margin-top: 3px; line-height: 1.35; }

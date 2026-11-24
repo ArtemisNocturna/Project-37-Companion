@@ -9,7 +9,7 @@
    ============================================================ */
 "use strict";
 
-const COMPANION_VERSIE = "1.2-dev.1";
+const COMPANION_VERSIE = "1.2-dev.2";
 // De dev-companion staat in de map /dev/ van dezelfde site. Hij gebruikt
 // dezelfde code, maar eigen opslag, zodat dev-data en echte data nooit
 // door elkaar lopen. Bij een release gaat de dev-code naar de hoofdmap.
@@ -380,6 +380,7 @@ function route() {
     return { scherm: "game", game: delen[1], tab, id, stats: !!id && tab === "lbs" && delen[4] === "stats" };
   }
   if (delen[0] === "controle") return { scherm: "controle" };
+  if (delen[0] === "jaar" && delen[1]) return { scherm: "jaar", jaar: Number(delen[1]), game: delen[2] || null };
   return { scherm: "home" };
 }
 const pad = (...d) => "#/" + d.map((x) => encodeURIComponent(String(x))).join("/");
@@ -403,6 +404,7 @@ function teken() {
   if (!staat.data) return tekenWelkom();
   const getekend = staat.getekend;
   staat.getekend = null;
+  if (r.scherm === "jaar") return tekenJaar(r);
   if (r.scherm === "game" && game(r.game)) {
     if (r.stats) return tekenLbStats(r);
     // Tablet, zelfde lijst, ander item: alleen de rechterkant vervangen,
@@ -499,6 +501,7 @@ function tekenHome() {
       <button class="${volgorde === "recent" ? "aan" : ""}" data-volgorde="recent">Laatst gebruikt</button>
       <button class="${volgorde === "az" ? "aan" : ""}" data-volgorde="az">A-Z</button>
     </div>` : ""}
+    ${wrappedBanner(d)}
     ${d.games.length ? `<div class="tegels">${tegels}</div>` : `<div class="leegtekst">Er staan nog geen games in je gegevens.</div>`}
     <div class="exportregel onderaan">
       <span>Gegevens van ${esc(datumTekst(d.gemaakt))}${d.app_versie ? ` · Project 37 ${esc(d.app_versie)}` : ""}${DEV ? (d.dev ? " · dev-export" : " · release-export") : ""}</span>
@@ -509,6 +512,51 @@ function tekenHome() {
   </main>`;
   activeerPlaatjes(app);
   window.scrollTo(0, staat.scroll.home || 0);
+}
+
+// ---------- Jaaroverzicht (pc-app 1.2x): de eindkaart ----------
+function jaren(d) { return Array.isArray(d.jaaroverzicht) ? d.jaaroverzicht.filter((j) => (j.overzichten || []).length) : []; }
+
+function wrappedBanner(d) {
+  const j = jaren(d)[0];
+  if (!j) return "";
+  return `<button class="wrapped-banner" data-ga="${esc(pad("jaar", j.jaar))}">
+    <span class="wb-jaar">${esc(j.jaar)}</span>
+    <span class="wb-tekst"><b>WRAPPED</b><small>${j.lopend ? "Jouw jaar tot nu toe" : "Jouw jaaroverzicht"} · ${meervoud(j.tijden, "tijd", "tijden")}</small></span>
+    <span class="wb-pijl">›</span>
+  </button>`;
+}
+
+function tekenJaar(r) {
+  const d = staat.data;
+  const lijst = jaren(d);
+  const j = lijst.find((x) => x.jaar === r.jaar) || lijst[0];
+  const terug = `<button class="icoonknop" data-ga="#/" aria-label="Terug naar games">${ICOON.terug}</button>`;
+  if (!j) {
+    app.innerHTML = `${kop("Jaaroverzicht", "", terug)}<main><div class="leegtekst">Er is nog geen jaaroverzicht. Op 1 januari staat je eerste klaar (maak daarna een nieuwe export).</div></main>`;
+    return;
+  }
+  const o = j.overzichten.find((x) => String(x.game_id ?? "") === String(r.game ?? "")) || j.overzichten[0];
+  const jaarKnoppen = lijst.length > 1 ? `<div class="schakel" role="group" aria-label="Jaar">${lijst.map((x) =>
+    `<button class="${x.jaar === j.jaar ? "aan" : ""}" data-ga="${esc(pad("jaar", x.jaar))}">${esc(x.jaar)}</button>`).join("")}</div>` : "";
+  const gameKnoppen = j.overzichten.length > 1 ? `<div class="wrapped-games">${j.overzichten.map((x) =>
+    `<button class="chip ${x === o ? "aan" : ""}" data-ga="${esc(x.game_id == null ? pad("jaar", j.jaar) : pad("jaar", j.jaar, x.game_id))}">${esc(x.titel)}</button>`).join("")}</div>` : "";
+  const kaarten = (o.kaarten || []).map((k) => `<div class="eindkaart ${k.later ? "later" : ""}">
+      <div class="ek-kop">${esc(k.kop)}</div><div class="ek-waarde">${esc(k.waarde)}</div>${k.sub ? `<div class="ek-sub">${esc(k.sub)}</div>` : ""}
+    </div>`).join("");
+  app.innerHTML = `${kop("Jaaroverzicht", j.lopend ? "Tot nu toe (dev)" : "", terug)}
+  <main class="wrapped">
+    ${jaarKnoppen}
+    ${gameKnoppen}
+    <section class="wrapped-kaart">
+      <div class="wk-boven">PROJECT 37 · JOUW</div>
+      <h2 class="wk-titel">${esc(j.jaar)} <span>WRAPPED</span></h2>
+      ${o.game_id != null ? `<div class="wk-game">${esc(o.titel)}</div>` : ""}
+      <div class="eindkaarten">${kaarten}</div>
+    </section>
+    <p class="voet">De dia's met Fenna bekijk je in Project 37 op de pc (Jaaroverzicht).</p>
+  </main>`;
+  window.scrollTo(0, 0);
 }
 
 // ---------- Filters ----------
